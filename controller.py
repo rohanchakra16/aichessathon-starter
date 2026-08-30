@@ -125,6 +125,8 @@ Read AGENTS.md and the protected policy. Make one focused strength or reliabilit
 improvement to the submission. You may edit only agent.py, requirements.txt, or
 files under weights/. Do not edit the harness, tests, workflow, controller,
 acceptance criteria, experiment state, training code, or documentation.
+Review the retained experiment journals and candidate history first; do not
+repeat a change that has already been tested.
 
 Hard requirements: get_move must always return a legal UCI move under the real
 clock; one CPU, 2 GB RAM, no network/GPU; readable source; no existing engine or
