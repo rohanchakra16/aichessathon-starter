@@ -22,6 +22,7 @@ BIAS = float(MODEL["bias"])
 
 MATE = 1_000_000.0
 MAX_DEPTH = 5
+QUIESCENCE_DEPTH = 2
 TT_LIMIT = 50_000
 TIME_CHECK_MASK = 63
 
@@ -80,7 +81,8 @@ def _check_time() -> None:
         raise SearchTimeout
 
 
-def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float:
+def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> float:
+    """Resolve short capture sequences before applying the learned evaluator."""
     _check_time()
     outcome = board.outcome(claim_draw=True)
     if outcome is not None:
@@ -89,6 +91,41 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
         return MATE if outcome.winner == board.turn else -MATE
     if depth == 0:
         return _model_evaluate(board)
+
+    in_check = board.is_check()
+    if not in_check:
+        stand_pat = _model_evaluate(board)
+        if stand_pat >= beta:
+            return stand_pat
+        alpha = max(alpha, stand_pat)
+
+    moves = _ordered_moves(board)
+    if not in_check:
+        moves = [move for move in moves if board.is_capture(move)]
+    if not moves:
+        return _model_evaluate(board)
+
+    best = -math.inf if in_check else alpha
+    for move in moves:
+        board.push(move)
+        score = -_quiescence(board, -beta, -alpha, depth - 1)
+        board.pop()
+        best = max(best, score)
+        alpha = max(alpha, score)
+        if alpha >= beta:
+            break
+    return best
+
+
+def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float:
+    _check_time()
+    outcome = board.outcome(claim_draw=True)
+    if outcome is not None:
+        if outcome.winner is None:
+            return 0.0
+        return MATE if outcome.winner == board.turn else -MATE
+    if depth == 0:
+        return _quiescence(board, alpha, beta, QUIESCENCE_DEPTH)
 
     key = (board._transposition_key(), depth)
     cached = _tt.get(key)
