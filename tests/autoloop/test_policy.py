@@ -1,4 +1,5 @@
 from typing import Any
+from unittest.mock import Mock, patch
 
 import controller
 
@@ -49,3 +50,8 @@ def test_decision_preserves_inconclusive_result() -> None:
 def test_upload_boundary_is_disabled() -> None:
     assert policy()["competition_upload_enabled"] is False
 
+
+def test_status_parser_preserves_first_filename_character() -> None:
+    completed = Mock(stdout=" M agent.py\n?? weights/new.json\n")
+    with patch("controller.run", return_value=completed):
+        assert controller.status_paths(controller.ROOT) == ["agent.py", "weights/new.json"]

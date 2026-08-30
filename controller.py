@@ -107,7 +107,7 @@ def protected_hash() -> str:
 
 
 def status_paths(worktree: Path) -> list[str]:
-    lines = git("status", "--porcelain", cwd=worktree).splitlines()
+    lines = run(["git", "status", "--porcelain"], cwd=worktree).stdout.splitlines()
     paths: list[str] = []
     for line in lines:
         path = line[3:]
