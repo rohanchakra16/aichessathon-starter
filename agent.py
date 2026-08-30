@@ -27,7 +27,7 @@ TIME_CHECK_MASK = 63
 
 _deadline = math.inf
 _nodes = 0
-_tt: dict[tuple[object, int], float] = {}
+_tt: dict[tuple[object, int], tuple[float, str]] = {}
 
 
 class SearchTimeout(Exception):
@@ -93,7 +93,18 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
     key = (board._transposition_key(), depth)
     cached = _tt.get(key)
     if cached is not None:
-        return cached
+        cached_score, bound = cached
+        if bound == "exact":
+            return cached_score
+        if bound == "lower":
+            alpha = max(alpha, cached_score)
+        else:
+            beta = min(beta, cached_score)
+        if alpha >= beta:
+            return cached_score
+
+    original_alpha = alpha
+    original_beta = beta
     best = -math.inf
     for move in _ordered_moves(board):
         board.push(move)
@@ -107,7 +118,13 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
             break
     if len(_tt) >= TT_LIMIT:
         _tt.clear()
-    _tt[key] = best
+    if best <= original_alpha:
+        bound = "upper"
+    elif best >= original_beta:
+        bound = "lower"
+    else:
+        bound = "exact"
+    _tt[key] = (best, bound)
     return best
 
 
