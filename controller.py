@@ -12,7 +12,6 @@ import fcntl
 import hashlib
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
@@ -25,7 +24,6 @@ ROOT = Path(__file__).resolve().parent
 POLICY_PATH = ROOT / ".autoloop/protected/policy.json"
 STATE_PATH = ROOT / ".autoloop/state.json"
 WORKTREES = ROOT / ".autoloop/worktrees"
-ARENA_SCORE = re.compile(r"score\s+(\d+(?:\.\d+)?)%")
 
 
 class InfrastructureError(RuntimeError):
@@ -93,6 +91,8 @@ def protected_hash() -> str:
     paths = [
         POLICY_PATH,
         ROOT / ".autoloop/protected/evaluate.py",
+        ROOT / ".autoloop/protected/arena.py",
+        ROOT / ".autoloop/protected/openings.json",
         ROOT / ".github/workflows/candidate-evaluate.yml",
         ROOT / "controller.py",
         *sorted((ROOT / "harness").glob("*.py")),
@@ -239,45 +239,42 @@ def github_evaluate(
     raise InfrastructureError(f"GitHub evaluation timed out; last run id: {run_id}")
 
 
-def arena(worktree: Path, policy: dict[str, Any]) -> dict[str, Any]:
+def arena(
+    worktree: Path, policy: dict[str, Any], experiment_id: str
+) -> dict[str, Any]:
     settings = policy["arena"]
     environment = os.environ.copy()
     environment.pop("CODEX_API_KEY", None)
     environment.pop("OPENAI_API_KEY", None)
+    output = ROOT / f".autoloop/artifacts/{experiment_id}-arena.json"
     completed = run(
         [
             "uv",
             "run",
             "python",
-            "-m",
-            "harness.arena",
-            "--agent",
+            ".autoloop/protected/arena.py",
+            "--candidate",
             str(worktree),
-            "--opponent",
+            "--champion",
             str(ROOT),
-            "--games",
-            str(settings["games"]),
-            "--base-ms",
-            str(settings["base_ms"]),
-            "--increment-ms",
-            str(settings["increment_ms"]),
-            "--ply-cap",
-            str(settings["ply_cap"]),
+            "--policy",
+            str(POLICY_PATH),
+            "--output",
+            str(output),
         ],
         timeout=max(300, settings["games"] * 30),
         check=False,
         env=environment,
     )
-    match = ARENA_SCORE.search(completed.stdout)
-    score = float(match.group(1)) / 100.0 if match else None
-    return {
-        "passed": completed.returncode == 0 and score is not None,
-        "returncode": completed.returncode,
-        "score": score,
-        "stdout": completed.stdout[-16000:],
-        "stderr": completed.stderr[-8000:],
-        "settings": settings,
-    }
+    if completed.returncode != 0 or not output.exists():
+        return {
+            "passed": False,
+            "returncode": completed.returncode,
+            "stdout": completed.stdout[-16000:],
+            "stderr": completed.stderr[-8000:],
+            "settings": settings,
+        }
+    return load(output)
 
 
 def decide(
@@ -374,7 +371,11 @@ def one_iteration(args: argparse.Namespace) -> None:
         )
         record["ci"] = ci
         record["workflow"] = workflow
-        match = arena(worktree, policy) if ci.get("passed") else {"passed": False, "skipped": True}
+        match = (
+            arena(worktree, policy, experiment_id)
+            if ci.get("passed")
+            else {"passed": False, "skipped": True}
+        )
         record["arena"] = match
         status, reason = decide(ci, match, policy)
         record["decision_reason"] = reason

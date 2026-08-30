@@ -27,11 +27,12 @@ contents, size, dependency syntax, source indicators, initialization, legal
 moves across edge cases, low-clock responses, lint/type checks, and two-colour
 smoke games.
 
-The local arena is intentionally an early bootstrap rule, not the final release
-rule. Before any submission candidate is nominated it must be replaced or
-supplemented with a frozen opening suite, fixed-host resource enforcement,
-larger paired matches, declared statistical stopping boundaries, learned-model
-ablation, and real-clock release games.
+The local arena builds and extracts both exact submission ZIPs, uses a frozen
+opening suite, pairs colours, and retains each PGN in the experiment record.
+Before any submission candidate is nominated it must still be supplemented
+with fixed-host resource enforcement, larger paired matches, declared
+statistical stopping boundaries, learned-model ablation, and real-clock release
+games.
 
 ## Run
 
@@ -44,4 +45,3 @@ python3 controller.py --iterations 2
 No code path in the controller uploads to the competition. The protected policy
 sets `competition_upload_enabled` to `false`, and there are no submission
 credentials in the repository or workflow.
-

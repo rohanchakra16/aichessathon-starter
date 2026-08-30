@@ -1,6 +1,8 @@
 from typing import Any
 from unittest.mock import Mock, patch
 
+import chess
+
 import controller
 
 
@@ -59,3 +61,16 @@ def test_status_parser_preserves_first_filename_character() -> None:
     completed = Mock(stdout=" M agent.py\n?? weights/new.json\n")
     with patch("controller.run", return_value=completed):
         assert controller.status_paths(controller.ROOT) == ["agent.py", "weights/new.json"]
+
+
+def test_frozen_openings_are_legal_and_paired() -> None:
+    current = policy()
+    openings_path = controller.ROOT / current["arena"]["openings_file"]
+    openings = controller.load(openings_path)["openings"]
+    assert current["arena"]["games"] == 2 * len(openings)
+    for opening in openings:
+        board = chess.Board()
+        for uci in opening["moves"]:
+            move = chess.Move.from_uci(uci)
+            assert move in board.legal_moves
+            board.push(move)

@@ -36,7 +36,8 @@
     "required_failures": 0
   },
   "arena": {
-    "games": 8,
+    "openings_file": ".autoloop/protected/openings.json",
+    "games": 16,
     "base_ms": 3000,
     "increment_ms": 50,
     "ply_cap": 180,
