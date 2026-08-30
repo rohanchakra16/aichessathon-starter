@@ -1,0 +1,101 @@
+{
+  "arena": {
+    "passed": true,
+    "returncode": 0,
+    "score": 0.5,
+    "settings": {
+      "base_ms": 3000,
+      "games": 8,
+      "increment_ms": 50,
+      "minimum_score": 0.625,
+      "ply_cap": 180
+    },
+    "stderr": "",
+    "stdout": "game 1/8: draw by threefold_repetition\ngame 2/8: draw by threefold_repetition\ngame 3/8: draw by threefold_repetition\ngame 4/8: draw by threefold_repetition\ngame 5/8: draw by threefold_repetition\ngame 6/8: draw by threefold_repetition\ngame 7/8: draw by threefold_repetition\ngame 8/8: draw by threefold_repetition\n\n/Users/phantomvenom/Documents/Codex/2026-08-30/referenced-chatgpt-conversation-this-is-an/outputs/aichessathon-starter/.autoloop/worktrees/exp-0002 vs /Users/phantomvenom/Documents/Codex/2026-08-30/referenced-chatgpt-conversation-this-is-an/outputs/aichessathon-starter over 8 games\n+0 =8 -0, score 50.0%\nterminations: threefold_repetition 8\n"
+  },
+  "branch": "autoloop/candidate-0002",
+  "candidate_commit": "d323d08fa06b7b547284668051d4dc7828f90f8f",
+  "ci": {
+    "duration_seconds": 7.843,
+    "mypy": {
+      "command": [
+        "uv",
+        "run",
+        "mypy"
+      ],
+      "duration_seconds": 1.285,
+      "passed": true,
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "Success: no issues found in 9 source files\n"
+    },
+    "package": {
+      "compressed_bytes": 2720,
+      "expanded_bytes": 6296,
+      "members": [
+        "agent.py",
+        "weights/model.json"
+      ],
+      "sha256": "ca27856b75533fdf3210d8e92bb906750ae61abd4f91fc521abf92cfecffdb41"
+    },
+    "package_problems": [],
+    "packaged_files": [
+      "agent.py",
+      "weights/model.json"
+    ],
+    "passed": true,
+    "ruff": {
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "check",
+        "."
+      ],
+      "duration_seconds": 0.015,
+      "passed": true,
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "All checks passed!\n"
+    },
+    "schema_version": 1,
+    "smoke": {
+      "failures": [],
+      "outcomes": [
+        {
+          "result": "white",
+          "termination": "checkmate"
+        },
+        {
+          "result": "draw",
+          "termination": "threefold_repetition"
+        }
+      ],
+      "passed": true
+    },
+    "started_at_epoch": 1788104145.7352946,
+    "static_problems": [],
+    "stress": {
+      "failures": [],
+      "init_seconds": 0.05269,
+      "max_move_seconds": 0.169974,
+      "passed": true,
+      "positions_checked": 6
+    }
+  },
+  "completed_at": "2026-08-30T15:36:22.416939+00:00",
+  "decision_reason": "paired arena score 0.500 did not reach a boundary",
+  "generator": "resumed-candidate",
+  "id": "exp-0002",
+  "protected_hash": "05fd6338f21dc729f4c6891f58cf0fd88a92d242e70194c3c0abf878edc419f9",
+  "resumed_after_interruption": true,
+  "schema_version": 1,
+  "started_at": "2026-08-30T15:35:44.113189+00:00",
+  "status": "inconclusive",
+  "workflow": {
+    "run_id": 33320078964,
+    "run_url": "https://github.com/rohanchakra16/aichessathon-starter/actions/runs/33320078964",
+    "wait_seconds": 19.617,
+    "workflow_conclusion": "success"
+  }
+}
