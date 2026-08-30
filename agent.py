@@ -95,6 +95,7 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
     if cached is not None:
         return cached
     best = -math.inf
+    fully_searched = True
     for move in _ordered_moves(board):
         board.push(move)
         score = -_negamax(board, depth - 1, -beta, -alpha)
@@ -104,10 +105,14 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
         if score > alpha:
             alpha = score
         if alpha >= beta:
+            fully_searched = False
             break
-    if len(_tt) >= TT_LIMIT:
-        _tt.clear()
-    _tt[key] = best
+    # A beta cutoff proves only a lower bound. Store exact scores alone so a
+    # later search window cannot mistake a bound for the position's value.
+    if fully_searched:
+        if len(_tt) >= TT_LIMIT:
+            _tt.clear()
+        _tt[key] = best
     return best
 
 
