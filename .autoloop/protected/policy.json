@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "candidate_timeout_seconds": 900,
+  "ci_timeout_seconds": 1200,
+  "candidate_allowed_paths": [
+    "agent.py",
+    "requirements.txt",
+    "weights/"
+  ],
+  "protected_paths": [
+    ".autoloop/protected/",
+    ".github/workflows/",
+    "AGENTS.md",
+    "controller.py",
+    "harness/",
+    "tests/autoloop/"
+  ],
+  "submission": {
+    "expanded_size_limit_bytes": 200000000,
+    "required_root_files": ["agent.py"],
+    "native_binary_suffixes": [
+      ".a", ".bin", ".dll", ".dylib", ".exe", ".o", ".so", ".whl"
+    ],
+    "forbidden_shadow_names": [
+      "chess.py", "json.py", "math.py", "os.py", "random.py", "sys.py", "types.py"
+    ],
+    "forbidden_source_terms": [
+      "stockfish", "lc0", "leela chess zero", "maia", "subprocess", "socket", "urllib", "requests"
+    ]
+  },
+  "reliability": {
+    "max_init_seconds": 50.0,
+    "max_single_move_seconds": 0.75,
+    "stress_time_left_ms": [1, 25, 100, 1000, 120000],
+    "required_failures": 0
+  },
+  "arena": {
+    "games": 8,
+    "base_ms": 3000,
+    "increment_ms": 50,
+    "ply_cap": 180,
+    "minimum_score": 0.625
+  },
+  "release": {
+    "real_clock_games": 2,
+    "base_ms": 120000,
+    "increment_ms": 500,
+    "ply_cap": 300
+  },
+  "competition_upload_enabled": false
+}

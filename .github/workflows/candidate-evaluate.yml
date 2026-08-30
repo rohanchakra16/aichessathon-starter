@@ -1,0 +1,33 @@
+name: candidate-evaluate
+
+on:
+  push:
+    branches:
+      - "autoloop/candidate-*"
+
+permissions:
+  contents: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - run: uv sync --locked
+      - name: Evaluate exact submission artifact
+        run: uv run python .autoloop/protected/evaluate.py --output evaluation.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evaluation
+          path: evaluation.json
+          if-no-files-found: error
+          retention-days: 30
+

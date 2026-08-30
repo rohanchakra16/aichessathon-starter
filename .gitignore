@@ -4,3 +4,7 @@ __pycache__/
 .ruff_cache/
 submission.zip
 *.pgn
+.autoloop/worktrees/
+.autoloop/controller.lock
+.autoloop/artifacts/
+evaluation.json

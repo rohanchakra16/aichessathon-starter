@@ -69,3 +69,9 @@ happens on the platform, and the validation log on your dashboard is the authori
 
 [aichessathon.com/docs](https://aichessathon.com/docs) is canonical and changes. Read it before
 you upload.
+
+## Internal autonomous optimisation
+
+This fork adds a protected, no-upload autonomous experiment loop. See
+[`docs/autoloop/README.md`](docs/autoloop/README.md) for its candidate scope,
+evidence protocol, safety boundaries, and run command.
