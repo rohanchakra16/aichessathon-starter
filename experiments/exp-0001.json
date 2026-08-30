@@ -1,0 +1,10 @@
+{
+  "branch": "autoloop/candidate-0001",
+  "completed_at": "2026-08-30T15:28:53.210586+00:00",
+  "failure": "CandidateError: candidate changed protected/disallowed paths: ['gent.py']",
+  "id": "exp-0001",
+  "protected_hash": "81026e456b44a1ca35afe2d63acbae21c825af2ace0af7ae0b12074a24fe21a9",
+  "schema_version": 1,
+  "started_at": "2026-08-30T15:26:38.935219+00:00",
+  "status": "failed"
+}
