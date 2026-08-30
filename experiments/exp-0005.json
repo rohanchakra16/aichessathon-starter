@@ -1,0 +1,202 @@
+{
+  "arena": {
+    "draws": 8,
+    "duration_seconds": 42.904,
+    "failures": [],
+    "games": [
+      {
+        "candidate_colour": "white",
+        "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"1/2-1/2\"]\n[FEN \"r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3\"]\n[SetUp \"1\"]\n[Termination \"threefold_repetition\"]\n[Opening \"open-game\"]\n\n3. Bd3 Bd6 4. Nc3 Nge7 5. Rf1 Rf8 6. h4 h5 7. g4 hxg4 8. Ng5 Nd4 9. Qxg4 c5 10. f4 exf4 11. b4 cxb4 12. e5 Bxe5 13. Nce4 Nd5 14. c4 Qxg5 15. hxg5 Ne7 16. a4 bxa3 17. Rxa3 f5 18. Qh5+ g6 19. Nf6+ Bxf6 20. Qh4 Be5 21. Rc3 d5 22. cxd5 Bd7 23. Qh8 Rxh8 24. Rc5 Rh5 25. Rf2 Rxg5 26. Bc4 Rg1+ 27. Bf1 Rg5 28. Bd3 Rg1+ 29. Bf1 Rg5 30. Bd3 Rg1+ 1/2-1/2",
+        "result": "draw",
+        "termination": "threefold_repetition"
+      },
+      {
+        "candidate_colour": "black",
+        "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"1/2-1/2\"]\n[FEN \"r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3\"]\n[SetUp \"1\"]\n[Termination \"threefold_repetition\"]\n[Opening \"open-game\"]\n\n3. Nxe5 Nxe5 4. Bd3 Nxd3+ 5. cxd3 Bd6 6. h3 Ne7 7. Nc3 Rf8 8. Rf1 g5 9. g4 f5 10. gxf5 Rf6 11. Qh5+ Kf8 12. Qxg5 Be5 13. d4 Bxd4 14. Ne2 h6 15. Qf4 Bc5 16. b4 Bxb4 17. Nd4 d5 18. exd5 Qxd5 19. Ne2 Bxd2+ 20. Bxd2 Bxf5 21. Qxf5 Nxf5 22. Bb4+ Kf7 23. a4 Re8 24. Rc1 c5 25. Bxc5 Rxe2+ 26. Kxe2 Re6+ 27. Be3 Nd4+ 28. Kd3 Nb3+ 29. Bd4 Qxd4+ 30. Kc2 Qc4+ 31. Kb2 Nxc1 32. Rd1 Qe2+ 33. Kxc1 Rc6+ 34. Kb1 Qxd1+ 35. Kb2 Qxa4 36. f3 Qf4 37. Kb3 Qxf3+ 38. Kb4 Qxh3 39. Kb5 Qf5+ 40. Kb4 a5+ 41. Ka3 b5 42. Kb2 Qd5 43. Ka3 Ke6 44. Kb2 Rc5 45. Ka3 h5 46. Kb2 b4 47. Kb1 Qe5 48. Ka2 a4 49. Kb1 Kd5 50. Ka2 h4 51. Kb1 Rc4 52. Ka2 Re4 53. Kb1 Rc4 54. Ka2 Re4 55. Kb1 1/2-1/2",
+        "result": "draw",
+        "termination": "threefold_repetition"
+      },
+      {
+        "candidate_colour": "white",
+        "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"1-0\"]\n[FEN \"rnbqkbnr/ppp2ppp/4p3/3p4/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3\"]\n[SetUp \"1\"]\n[Termination \"checkmate\"]\n[Opening \"queens-gambit\"]\n\n3. Qa4+ b5 4. Qxb5+ c6 5. Qb3 Qa5+ 6. Kd1 Nd7 7. cxd5 Qxd5 8. Qxd5 cxd5 9. Bf4 Ngf6 10. Nf3 Bd6 11. Bxd6 Ne4 12. Bg3 Nxg3 13. hxg3 Rf8 14. Rxh7 f5 15. Rxg7 Nf6 16. Nbd2 a5 17. Ne5 Ra6 18. Rg5 Rd6 19. Rc1 Bb7 20. Rc5 Ke7 21. Ng6+ Kf7 22. Rc7+ Rd7 23. Ne5+ Ke7 24. Rg7+ Rf7 25. Rxf7+ Kd6 26. Rfxd7+ Nxd7 27. Rxd7# 1-0",
+        "result": "white",
+        "termination": "checkmate"
+      },
+      {
+        "candidate_colour": "black",
+        "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"0-1\"]\n[FEN \"rnbqkbnr/ppp2ppp/4p3/3p4/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3\"]\n[SetUp \"1\"]\n[Termination \"checkmate\"]\n[Opening \"queens-gambit\"]\n\n3. cxd5 Bb4+ 4. Nd2 Qxd5 5. Qa4+ Nc6 6. Nf3 Bxd2+ 7. Nxd2 Qxd4 8. Qxd4 Nxd4 9. e4 Nc2+ 10. Kd1 Nxa1 11. Bd3 Ne7 12. Re1 Bd7 13. Re3 Ba4+ 14. Ke2 Nc2 15. Rf3 Nd4+ 16. Ke3 Nxf3 17. gxf3 Rd8 18. Bc4 Rf8 19. Nf1 Rd6 20. h4 h5 21. b4 f5 22. e5 f4+ 23. Ke4 Bc2+ 24. Bd3 Bxd3# 0-1",
+        "result": "black",
+        "termination": "checkmate"
+      },
+      {
+        "candidate_colour": "white",
+        "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"1/2-1/2\"]\n[FEN \"rnbqkb1r/pppp1ppp/5n2/4p3/2P5/2N5/PP1PPPPP/R1BQKBNR w KQkq - 2 3\"]\n[SetUp \"1\"]\n[Termination \"threefold_repetition\"]\n[Opening \"english\"]\n\n3. Nf3 Bd6 4. h4 Nc6 5. Rh3 Rf8 6. g4 Nxg4 7. Ne4 Be7 8. d4 Bb4+ 9. Bd2 Bxd2+ 10. Qxd2 exd4 11. Nxd4 Nxd4 12. Qxd4 h5 13. Qxg7 Nxf2 14. Qe5+ Qe7 15. Nf6+ Kd8 16. Qxe7+ Kxe7 17. Nd5+ Ke6 18. Nxc7+ Kd6 19. Nxa8 Nxh3 20. Bxh3 b5 21. cxb5 a5 22. Nb6 Bb7 23. Rd1+ Ke5 24. Nxd7+ Ke4 25. Nxf8 f6 26. Bg2+ Ke5 27. Bxb7 f5 28. Bf3 f4 29. Bxh5 a4 30. Nd7+ Ke4 31. Nc5+ Ke5 32. Nxa4 Ke4 33. Nc5+ Ke5 34. Rd3 Kf5 35. Rd5+ Kf6 36. Nd3 Ke6 37. Nxf4+ Ke7 38. e4 Kf6 39. b4 Ke7 40. a4 Kf6 41. Bg4 Ke7 42. Bf5 Kf6 43. Ke2 Ke7 44. e5 Kf7 45. Be4 Ke7 46. Ke3 Kf7 47. Kd4 Kf8 48. Ne6+ Kf7 49. Nf4 Kf8 50. Ne6+ Kf7 1/2-1/2",
+        "result": "draw",
+        "termination": "threefold_repetition"
+      },
+      {
+        "candidate_colour": "black",
+        "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"0-1\"]\n[FEN \"rnbqkb1r/pppp1ppp/5n2/4p3/2P5/2N5/PP1PPPPP/R1BQKBNR w KQkq - 2 3\"]\n[SetUp \"1\"]\n[Termination \"checkmate\"]\n[Opening \"english\"]\n\n3. Nf3 Bd6 4. Nxe5 Bxe5 5. Nb5 Nc6 6. h4 Ne4 7. Rh3 Rf8 8. Nxc7+ Qxc7 9. Re3 f5 10. d3 Qa5+ 11. Bd2 Nxd2 12. Rxe5+ Qxe5 13. Qxd2 Nd4 14. Rd1 Nxe2 15. b4 Nc3+ 16. Qe3 Qxe3+ 17. fxe3 Nxd1 18. Kxd1 Rf6 19. Be2 a5 20. b5 g6 21. a4 h5 22. g3 Re6 23. g4 hxg4 24. d4 Rxe3 25. Bf1 Re4 26. d5 Rd4+ 27. Ke2 Rxc4 28. Bg2 Rxa4 29. Ke3 Rc4 30. Bf1 Re4+ 31. Kd3 Re5 32. d6 Rxb5 33. Be2 Rd5+ 34. Kc4 Rxd6 35. Bd3 b5+ 36. Kc3 Rd5 37. Be2 Ra6 38. Kc2 Rad6 39. Kc3 Ke7 40. Kb2 Rd2+ 41. Kc3 Rxe2 42. h5 gxh5 43. Kb3 Rd3# 0-1",
+        "result": "black",
+        "termination": "checkmate"
+      },
+      {
+        "candidate_colour": "white",
+        "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"1/2-1/2\"]\n[FEN \"rnbqkbnr/pp2pppp/8/2pp4/8/5NP1/PPPPPP1P/RNBQKB1R w KQkq - 0 3\"]\n[SetUp \"1\"]\n[Termination \"threefold_repetition\"]\n[Opening \"reti\"]\n\n3. Nc3 Bf5 4. Ne5 d4 5. e4 dxe3 6. Bb5+ Nd7 7. Bxd7+ Bxd7 8. Nxd7 Qxd7 9. fxe3 Nf6 10. Rf1 Ng8 11. Rf4 Rd8 12. Ne4 c4 13. h4 Qd5 14. d4 cxd3 15. Qxd3 Qxd3 16. cxd3 Rxd3 17. Bd2 h5 18. Rd1 Rh6 19. b4 Re6 20. a4 Nh6 21. Ke2 Rd5 22. b5 Ree5 23. Bc3 Rxd1 24. Bxe5 Rd5 25. Bd4 a5 26. bxa6 bxa6 27. Kd3 e5 28. Nf6+ gxf6 29. Re4 Bd6 30. Kc4 Ra5 31. Kb3 Nf5 32. Bc3 Rd5 33. Kc4 Rc5+ 34. Kd3 Rd5+ 35. Kc2 Nxg3 36. Rc4 Nf5 37. Re4 Rc5 38. Kd3 Rd5+ 39. Kc2 Rc5 40. Kd3 Rd5+ 1/2-1/2",
+        "result": "draw",
+        "termination": "threefold_repetition"
+      },
+      {
+        "candidate_colour": "black",
+        "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"1/2-1/2\"]\n[FEN \"rnbqkbnr/pp2pppp/8/2pp4/8/5NP1/PPPPPP1P/RNBQKB1R w KQkq - 0 3\"]\n[SetUp \"1\"]\n[Termination \"threefold_repetition\"]\n[Opening \"reti\"]\n\n3. Nc3 Bf5 4. Ne5 Nf6 5. h4 Nbd7 6. Nxd7 Qxd7 7. f4 Rd8 8. Rh2 h5 9. Rf2 Rh6 10. Rf3 b5 11. Re3 a5 12. Re5 Ne4 13. Nxe4 Bxe4 14. c3 Rf6 15. Rxh5 g5 16. Rxg5 Qe6 17. b4 axb4 18. cxb4 cxb4 19. d4 Rd6 20. Be3 Kd7 21. Rc1 Bh6 22. Rh5 Bg7 23. Rc5 Bh6 24. Rxb5 Bg7 25. Rxb4 Bh6 26. Qa4+ Kd8 27. Qa5+ Kd7 28. Qb5+ Kd8 29. Qa5+ Kd7 30. Qb5+ Rc6 31. Qb7+ Kd6 32. Qb8+ Kd7 33. Qb7+ Kd6 34. Qb8+ Kd7 1/2-1/2",
+        "result": "draw",
+        "termination": "threefold_repetition"
+      },
+      {
+        "candidate_colour": "white",
+        "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"0-1\"]\n[FEN \"rnbqkbnr/pp2pppp/3p4/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 3\"]\n[SetUp \"1\"]\n[Termination \"checkmate\"]\n[Opening \"sicilian\"]\n\n3. Bb5+ Nd7 4. Nc3 Nf6 5. Rf1 Nxe4 6. Nxe4 h5 7. Nxc5 dxc5 8. Ne5 Rh6 9. Nxd7 Re6+ 10. Ne5+ Bd7 11. Bxd7+ Qxd7 12. Qxh5 Qd5 13. Qxf7+ Kd8 14. Qxf8+ Kc7 15. Qxa8 Rxe5+ 16. Kd1 Qxg2 17. Qxb7+ Kxb7 18. d4 Qxf1+ 19. Kd2 cxd4 20. f3 Qe2# 0-1",
+        "result": "black",
+        "termination": "checkmate"
+      },
+      {
+        "candidate_colour": "black",
+        "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"1/2-1/2\"]\n[FEN \"rnbqkbnr/pp2pppp/3p4/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 3\"]\n[SetUp \"1\"]\n[Termination \"threefold_repetition\"]\n[Opening \"sicilian\"]\n\n3. Bd3 Be6 4. a4 Nf6 5. Bb5+ Nbd7 6. Bxd7+ Qxd7 7. Nc3 Rd8 8. Rf1 h5 9. Ra3 Rh6 10. h4 g5 11. hxg5 Bc4 12. gxh6 Bxf1 13. Kxf1 Bxh6 14. g4 hxg4 15. Nh4 Bf4 16. b4 cxb4 17. Rb3 bxc3 18. Rxc3 Nxe4 19. Rd3 Nxd2+ 20. Bxd2 Qxa4 21. Bxf4 Qxf4 22. Ke2 Qe4+ 23. Kd2 Qf4+ 24. Kc3 Qf6+ 25. Kc4 d5+ 26. Kb5 Qa6+ 27. Kb4 Qc4+ 28. Ka3 Qa6+ 29. Kb4 Qc4+ 30. Ka3 Qc5+ 31. Ka4 Qc4+ 1/2-1/2",
+        "result": "draw",
+        "termination": "threefold_repetition"
+      },
+      {
+        "candidate_colour": "white",
+        "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"1/2-1/2\"]\n[FEN \"rnbqkbnr/ppp2ppp/4p3/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3\"]\n[SetUp \"1\"]\n[Termination \"threefold_repetition\"]\n[Opening \"french\"]\n\n3. Bb5+ c6 4. Bxc6+ Nxc6 5. exd5 Qxd5 6. Nf3 Qxf3 7. gxf3 Nxd4 8. Qxd4 Ne7 9. Qa4+ Kd8 10. Qd4+ Ke8 11. Qa4+ Kd8 12. Qd4+ Ke8 13. Qa4+ 1/2-1/2",
+        "result": "draw",
+        "termination": "threefold_repetition"
+      },
+      {
+        "candidate_colour": "black",
+        "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"0-1\"]\n[FEN \"rnbqkbnr/ppp2ppp/4p3/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3\"]\n[SetUp \"1\"]\n[Termination \"checkmate\"]\n[Opening \"french\"]\n\n3. Bb5+ Nd7 4. exd5 Bb4+ 5. c3 Bd6 6. dxe6 fxe6 7. Qh5+ g6 8. Bxd7+ Bxd7 9. Qg4 Ne7 10. h4 Nd5 11. Qxe6+ Bxe6 12. Bf4 Bxf4 13. Nf3 Qd6 14. Nbd2 Nxc3 15. bxc3 Bxd2+ 16. Kxd2 Qf4+ 17. Kd3 Bf5+ 18. Kc4 Be6+ 19. Kc5 b6+ 20. Kc6 Bd7+ 21. Kd5 c6+ 22. Kc4 Be6+ 23. Kd3 Bf5+ 24. Kc4 b5+ 25. Kc5 Rd8 26. Rhe1+ Be4 27. Rxe4+ Qxe4 28. Ng5 Qd5+ 29. Kb4 a5+ 30. Kxa5 Ra8+ 31. Kb6 Rb8+ 32. Kc7 Qd8+ 33. Kxc6 Rb6+ 34. Kc5 Qd6# 0-1",
+        "result": "black",
+        "termination": "checkmate"
+      },
+      {
+        "candidate_colour": "white",
+        "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"1/2-1/2\"]\n[FEN \"rnbqkb1r/pppppp1p/5np1/8/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3\"]\n[SetUp \"1\"]\n[Termination \"threefold_repetition\"]\n[Opening \"kings-indian\"]\n\n3. Bf4 Nc6 4. Nf3 Ne4 5. Nbd2 Nxd2 6. Qxd2 h5 7. Rd1 f5 8. h4 Rh7 9. Rh3 Rf7 10. b4 Rf6 11. a4 Re6 12. Qd3 Nxb4 13. Qd2 Nc6 14. Qd3 b5 15. axb5 Nb4 16. Qd2 Na2 17. Qxa2 Re4 18. Qd2 Rb8 19. Ne5 d6 20. Nxg6 Bg7 21. Re3 Rxe3 22. fxe3 Be6 23. g4 hxg4 24. Qd3 Bf6 25. Rd2 Rb6 26. e4 fxe4 27. Qxe4 Bxc4 28. Nxe7 Bxh4+ 29. Kd1 Rxb5 30. Nc6+ Re5 31. Qg6+ Kd7 32. Nxd8 Bb3+ 33. Kc1 Rd5 34. Qf7+ Kxd8 35. Qg8+ Ke7 36. Qh7+ Ke6 37. Qe4+ Kf6 38. Be5+ dxe5 39. dxe5+ Rxe5 40. Qf4+ Rf5 41. Qd4+ Ke6 42. Qe4+ Kf6 43. Qd4+ Ke6 44. Qxg4 Bd5 45. Qg6+ Rf6 46. Qg4+ Ke5 47. Qd4+ Kf5 48. Bh3+ Kg5 49. Qe5+ Kg6 50. Rxd5 Rc6+ 51. Kd2 a5 52. Qe8+ Kf6 53. Qxc6+ Kf7 54. Qxc7+ Kf6 55. Qd8+ Kg6 56. Qxh4 Kf7 57. Rxa5 Kg6 58. Be6 Kg7 59. Qd4+ Kg6 60. Rd5 Kh6 61. e4 Kh7 62. Bf5+ Kh6 63. Be6 Kh7 64. Bf5+ Kh6 1/2-1/2",
+        "result": "draw",
+        "termination": "threefold_repetition"
+      },
+      {
+        "candidate_colour": "black",
+        "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"0-1\"]\n[FEN \"rnbqkb1r/pppppp1p/5np1/8/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3\"]\n[SetUp \"1\"]\n[Termination \"checkmate\"]\n[Opening \"kings-indian\"]\n\n3. Bf4 Nc6 4. Nf3 Ne4 5. d5 e5 6. dxe6 Bb4+ 7. Nbd2 Nxd2 8. Nxd2 fxe6 9. Bxc7 Qxc7 10. Rc1 Bxd2+ 11. Qxd2 Qe5 12. h4 Nd4 13. Rh3 Nxe2 14. Bxe2 Rf8 15. Qxd7+ Bxd7 16. Re3 Qa5+ 17. b4 Qxb4+ 18. Kd1 Ba4+ 19. Rc2 Rd8+ 20. Bd3 Bxc2+ 21. Kxc2 Rxf2+ 22. Be2 Qd2+ 23. Kb3 Qxe3+ 24. Kb4 Rxe2 25. g4 Rb2+ 26. Ka4 Rxa2+ 27. Kb4 Qe1+ 28. Kb3 Qb1+ 29. Kc3 Rd3# 0-1",
+        "result": "black",
+        "termination": "checkmate"
+      },
+      {
+        "candidate_colour": "white",
+        "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"1-0\"]\n[FEN \"rnbqkbnr/pp2pppp/2p5/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3\"]\n[SetUp \"1\"]\n[Termination \"checkmate\"]\n[Opening \"caro-kann\"]\n\n3. exd5 Qxd5 4. Bf4 Qxd4 5. Qxd4 e5 6. Qxe5+ Kd7 7. Qf5+ Ke7 8. Qxc8 Nf6 9. Qxb7+ Nbd7 10. Qxa8 Nb8 11. Qxa7+ Ke6 12. Bc4+ Kf5 13. Qxb8 Ne8 14. Qe5+ Kg4 15. Qg5# 1-0",
+        "result": "white",
+        "termination": "checkmate"
+      },
+      {
+        "candidate_colour": "black",
+        "pgn": "[Event \"?\"]\n[Site \"?\"]\n[Date \"????.??.??\"]\n[Round \"?\"]\n[White \"?\"]\n[Black \"?\"]\n[Result \"1-0\"]\n[FEN \"rnbqkbnr/pp2pppp/2p5/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3\"]\n[SetUp \"1\"]\n[Termination \"checkmate\"]\n[Opening \"caro-kann\"]\n\n3. e5 Qa5+ 4. Ke2 Qb5+ 5. c4 Qxc4+ 6. Ke3 Qb4 7. Bd3 Be6 8. Nf3 Nd7 9. Rf1 Rd8 10. h4 h5 11. g4 hxg4 12. Ng5 Rxh4 13. Nxe6 fxe6 14. Bg6# 1-0",
+        "result": "white",
+        "termination": "checkmate"
+      }
+    ],
+    "losses": 2,
+    "passed": true,
+    "schema_version": 1,
+    "score": 0.625,
+    "settings": {
+      "base_ms": 3000,
+      "games": 16,
+      "increment_ms": 50,
+      "minimum_score": 0.625,
+      "openings_file": ".autoloop/protected/openings.json",
+      "ply_cap": 180
+    },
+    "wins": 6
+  },
+  "branch": "autoloop/candidate-0005",
+  "candidate_commit": "ab5286b54b1e35988c681ca26cfec34b1122cdb8",
+  "ci": {
+    "duration_seconds": 5.622,
+    "mypy": {
+      "command": [
+        "uv",
+        "run",
+        "mypy"
+      ],
+      "duration_seconds": 1.92,
+      "passed": true,
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "Success: no issues found in 9 source files\n"
+    },
+    "package": {
+      "compressed_bytes": 2818,
+      "expanded_bytes": 7207,
+      "members": [
+        "agent.py",
+        "weights/model.json"
+      ],
+      "sha256": "6f9cc333f20ddb704ac07e938b0fbfa1b729aa2d5f9c0d633d09920e10e36016"
+    },
+    "package_problems": [],
+    "packaged_files": [
+      "agent.py",
+      "weights/model.json"
+    ],
+    "passed": true,
+    "ruff": {
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "check",
+        "."
+      ],
+      "duration_seconds": 0.021,
+      "passed": true,
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "All checks passed!\n"
+    },
+    "schema_version": 1,
+    "smoke": {
+      "failures": [],
+      "outcomes": [
+        {
+          "result": "white",
+          "termination": "checkmate"
+        },
+        {
+          "result": "black",
+          "termination": "checkmate"
+        }
+      ],
+      "passed": true
+    },
+    "started_at_epoch": 1788105154.2733808,
+    "static_problems": [],
+    "stress": {
+      "failures": [],
+      "init_seconds": 0.070311,
+      "max_move_seconds": 0.357141,
+      "passed": true,
+      "positions_checked": 6
+    }
+  },
+  "completed_at": "2026-08-30T15:53:27.722479+00:00",
+  "decision_reason": "paired arena score 0.625 met 0.625",
+  "generator": "codex-exec",
+  "id": "exp-0005",
+  "protected_hash": "7dc71e65ba88b646af5f192f0a53b994d3939db0b100d2bf69a98192a6089ff2",
+  "schema_version": 1,
+  "started_at": "2026-08-30T15:49:13.586762+00:00",
+  "status": "accepted",
+  "workflow": {
+    "run_id": 33320857367,
+    "run_url": "https://github.com/rohanchakra16/aichessathon-starter/actions/runs/33320857367",
+    "wait_seconds": 20.04,
+    "workflow_conclusion": "success"
+  }
+}

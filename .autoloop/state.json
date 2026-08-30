@@ -1,8 +1,8 @@
 {
-  "champion_commit": "cf572831652a9a442609cc9c6fd51c398c1449ab",
-  "last_completed_experiment": "exp-0004",
+  "champion_commit": "ab5286b54b1e35988c681ca26cfec34b1122cdb8",
+  "last_completed_experiment": "exp-0005",
   "live_submission": null,
-  "next_experiment": 5,
+  "next_experiment": 6,
   "schema_version": 1,
   "submission_candidate": null
 }
