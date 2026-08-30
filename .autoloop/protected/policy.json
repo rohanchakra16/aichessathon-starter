@@ -1,5 +1,6 @@
 {
   "schema_version": 1,
+  "github_repository": "rohanchakra16/aichessathon-starter",
   "candidate_timeout_seconds": 900,
   "ci_timeout_seconds": 1200,
   "candidate_allowed_paths": [

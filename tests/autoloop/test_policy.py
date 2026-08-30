@@ -51,6 +51,10 @@ def test_upload_boundary_is_disabled() -> None:
     assert policy()["competition_upload_enabled"] is False
 
 
+def test_workflow_queries_are_pinned_to_user_fork() -> None:
+    assert policy()["github_repository"] == "rohanchakra16/aichessathon-starter"
+
+
 def test_status_parser_preserves_first_filename_character() -> None:
     completed = Mock(stdout=" M agent.py\n?? weights/new.json\n")
     with patch("controller.run", return_value=completed):

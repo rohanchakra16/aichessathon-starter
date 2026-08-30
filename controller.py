@@ -165,7 +165,11 @@ the focused local tests you need, but do not commit and do not create notes."""
 
 
 def github_evaluate(
-    worktree: Path, branch: str, candidate_sha: str, timeout: int
+    worktree: Path,
+    branch: str,
+    candidate_sha: str,
+    timeout: int,
+    repository: str,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     pushed_at = time.monotonic()
     push = run(
@@ -189,6 +193,8 @@ def github_evaluate(
                 branch,
                 "--commit",
                 candidate_sha,
+                "--repo",
+                repository,
                 "--limit",
                 "1",
                 "--json",
@@ -214,6 +220,8 @@ def github_evaluate(
                             "evaluation",
                             "-D",
                             str(artifact_dir),
+                            "--repo",
+                            repository,
                         ],
                         check=False,
                     )
@@ -334,9 +342,20 @@ def one_iteration(args: argparse.Namespace) -> None:
             check=False,
         )
         if show_ref.returncode == 0:
-            raise InfrastructureError(f"branch already exists from an interrupted run: {branch}")
-        git("worktree", "add", "-b", branch, str(worktree), champion)
-        proposal = generate_candidate(worktree, experiment_id, policy)
+            git("worktree", "add", str(worktree), branch)
+            resumed_sha = git("rev-parse", "HEAD", cwd=worktree)
+            if resumed_sha == champion:
+                raise InfrastructureError(
+                    f"interrupted branch contains no candidate commit: {branch}"
+                )
+            proposal = {
+                "generator": "resumed-candidate",
+                "candidate_commit": resumed_sha,
+            }
+            record["resumed_after_interruption"] = True
+        else:
+            git("worktree", "add", "-b", branch, str(worktree), champion)
+            proposal = generate_candidate(worktree, experiment_id, policy)
         record.update(proposal)
         candidate_sha = proposal["candidate_commit"]
         illegal = [
@@ -347,7 +366,11 @@ def one_iteration(args: argparse.Namespace) -> None:
         if illegal:
             raise CandidateError(f"committed candidate changed disallowed paths: {illegal}")
         ci, workflow = github_evaluate(
-            worktree, branch, candidate_sha, policy["ci_timeout_seconds"]
+            worktree,
+            branch,
+            candidate_sha,
+            policy["ci_timeout_seconds"],
+            policy["github_repository"],
         )
         record["ci"] = ci
         record["workflow"] = workflow
