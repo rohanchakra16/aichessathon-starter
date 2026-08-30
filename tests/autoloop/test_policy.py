@@ -1,3 +1,7 @@
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
 from typing import Any
 from unittest.mock import Mock, patch
 
@@ -21,6 +25,7 @@ def test_protected_paths_are_not_candidate_editable() -> None:
     protected = (
         ".autoloop/protected/policy.json",
         ".github/workflows/candidate-evaluate.yml",
+        "Makefile",
         "controller.py",
         "harness/referee.py",
         "tests/autoloop/test_policy.py",
@@ -74,3 +79,25 @@ def test_frozen_openings_are_legal_and_paired() -> None:
             move = chess.Move.from_uci(uci)
             assert move in board.legal_moves
             board.push(move)
+
+
+def test_release_zip_is_byte_reproducible() -> None:
+    script = controller.ROOT / ".autoloop/protected/artifact.py"
+    with tempfile.TemporaryDirectory() as temporary:
+        first = Path(temporary) / "first.zip"
+        second = Path(temporary) / "second.zip"
+        for output in (first, second):
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(script),
+                    "--root",
+                    str(controller.ROOT),
+                    "--output",
+                    str(output),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        assert first.read_bytes() == second.read_bytes()

@@ -92,9 +92,11 @@ def protected_hash() -> str:
         POLICY_PATH,
         ROOT / ".autoloop/protected/evaluate.py",
         ROOT / ".autoloop/protected/arena.py",
+        ROOT / ".autoloop/protected/artifact.py",
         ROOT / ".autoloop/protected/openings.json",
         ROOT / ".github/workflows/candidate-evaluate.yml",
         ROOT / "controller.py",
+        ROOT / "Makefile",
         *sorted((ROOT / "harness").glob("*.py")),
         *sorted((ROOT / "tests/autoloop").glob("*.py")),
     ]
@@ -317,7 +319,7 @@ def persist(
     git("commit", "-m", f"record experiment {experiment_id}: {status}")
 
 
-def one_iteration(args: argparse.Namespace) -> None:
+def one_iteration(args: argparse.Namespace) -> bool:
     policy = load(POLICY_PATH)
     state = load(STATE_PATH)
     number = int(state["next_experiment"])
@@ -384,16 +386,19 @@ def one_iteration(args: argparse.Namespace) -> None:
         persist(experiment_id, record, state, status, candidate_sha)
         git("push", "origin", "main")
         print(f"{experiment_id}: {status}: {reason}", flush=True)
+        return True
     except InfrastructureError as exc:
         record["failure"] = f"{type(exc).__name__}: {exc}"
         persist(experiment_id, record, state, "infrastructure_error", None)
         git("push", "origin", "main", check=False)
         print(f"{experiment_id}: infrastructure_error: {exc}", file=sys.stderr, flush=True)
+        return False
     except Exception as exc:
         record["failure"] = f"{type(exc).__name__}: {exc}"
         persist(experiment_id, record, state, "failed", None)
         git("push", "origin", "main", check=False)
         print(f"{experiment_id}: failed: {exc}", file=sys.stderr, flush=True)
+        return True
     finally:
         if worktree.exists() and not args.keep_worktrees:
             git("worktree", "remove", "--force", str(worktree), check=False)
@@ -417,6 +422,7 @@ def preflight() -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--iterations", type=int, default=1)
+    parser.add_argument("--continuous", action="store_true")
     parser.add_argument("--keep-worktrees", action="store_true")
     args = parser.parse_args()
     if args.iterations < 1:
@@ -429,8 +435,15 @@ def main() -> int:
         except BlockingIOError as exc:
             raise RuntimeError("another controller instance is already running") from exc
         preflight()
-        for _ in range(args.iterations):
-            one_iteration(args)
+        if args.continuous:
+            stop_path = ROOT / ".autoloop/controller.stop"
+            while not stop_path.exists():
+                if not one_iteration(args):
+                    return 1
+        else:
+            for _ in range(args.iterations):
+                if not one_iteration(args):
+                    return 1
     return 0
 
 

@@ -27,6 +27,10 @@ contents, size, dependency syntax, source indicators, initialization, legal
 moves across edge cases, low-clock responses, lint/type checks, and two-colour
 smoke games.
 
+`make release-zip` builds the same byte-reproducible artifact used by protected
+evaluation. It fixes ZIP timestamps and permissions so identical submission
+source produces an identical SHA-256 across checkouts and hosts.
+
 The local arena builds and extracts both exact submission ZIPs, uses a frozen
 opening suite, pairs colours, and retains each PGN in the experiment record.
 Before any submission candidate is nominated it must still be supplemented
@@ -41,6 +45,16 @@ From a clean `main` checkout with GitHub and Codex authenticated:
 ```sh
 python3 controller.py --iterations 2
 ```
+
+For a persistent no-click loop on the Mac, keep the host awake and run:
+
+```sh
+caffeinate -dimsu python3 controller.py --continuous
+```
+
+Create `.autoloop/controller.stop` to request a clean stop after the current
+experiment. An infrastructure or authentication failure stops continuous mode
+instead of immediately retrying and consuming resources.
 
 No code path in the controller uploads to the competition. The protected policy
 sets `competition_upload_enabled` to `false`, and there are no submission

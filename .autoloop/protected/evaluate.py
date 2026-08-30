@@ -20,8 +20,9 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 import chess  # noqa: E402
+from artifact import build_deterministic  # noqa: E402
 
-from harness.package import DEFAULT_INCLUDES, build  # noqa: E402
+from harness.package import DEFAULT_INCLUDES  # noqa: E402
 from harness.referee import FAILED_TERMINATIONS, play_match  # noqa: E402
 from harness.sandbox import AgentFailure, local  # noqa: E402
 
@@ -192,7 +193,7 @@ def main() -> int:
         with tempfile.TemporaryDirectory(prefix="chessathon-eval-") as temporary:
             temp = Path(temporary)
             archive = temp / "submission.zip"
-            written = build(ROOT, archive, DEFAULT_INCLUDES)
+            written = build_deterministic(ROOT, archive, DEFAULT_INCLUDES)
             package_problems, package = package_checks(archive, policy)
             result["packaged_files"] = written
             result["package"] = package

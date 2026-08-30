@@ -6,5 +6,6 @@ submission.zip
 *.pgn
 .autoloop/worktrees/
 .autoloop/controller.lock
+.autoloop/controller.stop
 .autoloop/artifacts/
 evaluation.json

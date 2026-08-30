@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: setup play arena zip gate
+.PHONY: setup play arena zip release-zip gate
 
 setup:
 	uv sync
@@ -13,6 +13,9 @@ arena:
 
 zip:
 	uv run python -m harness.package
+
+release-zip:
+	uv run python .autoloop/protected/artifact.py --root . --output submission.zip
 
 gate:
 	uv run ruff check .

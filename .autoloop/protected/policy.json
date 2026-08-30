@@ -12,6 +12,7 @@
     ".autoloop/protected/",
     ".github/workflows/",
     "AGENTS.md",
+    "Makefile",
     "controller.py",
     "harness/",
     "tests/autoloop/"

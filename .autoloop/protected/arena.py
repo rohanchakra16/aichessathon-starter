@@ -17,8 +17,9 @@ sys.path.insert(0, str(ROOT))
 
 import chess  # noqa: E402
 import chess.pgn  # noqa: E402
+from artifact import build_deterministic  # noqa: E402
 
-from harness.package import DEFAULT_INCLUDES, build  # noqa: E402
+from harness.package import DEFAULT_INCLUDES  # noqa: E402
 from harness.referee import FAILED_TERMINATIONS, PIECE_VALUES  # noqa: E402
 from harness.rules import INIT_BUDGET_S  # noqa: E402
 from harness.sandbox import Agent, AgentFailure, local  # noqa: E402
@@ -142,7 +143,7 @@ def play_from_fen(
 
 def extract_submission(source: Path, destination: Path) -> None:
     archive = destination.with_suffix(".zip")
-    build(source, archive, DEFAULT_INCLUDES)
+    build_deterministic(source, archive, DEFAULT_INCLUDES)
     destination.mkdir()
     with zipfile.ZipFile(archive) as zipped:
         zipped.extractall(destination)
