@@ -168,7 +168,7 @@ def _budget_seconds(time_left_ms: int) -> float:
     if time_left_ms <= 5:
         return 0.0
     clock = time_left_ms / 1000.0
-    return min(0.35, max(0.002, clock / 80.0), max(0.0, clock - 0.003))
+    return min(0.70, max(0.002, clock / 35.0), max(0.0, clock - 0.003))
 
 
 def get_move(fen: str, time_left_ms: int) -> str:
