@@ -1,0 +1,12 @@
+{
+  "branch": "autoloop/candidate-0008",
+  "candidate_commit": "27d912b0bdd7114ca479edeeb1fbddf8b62687d0",
+  "completed_at": "2026-08-31T00:29:46.855907+00:00",
+  "failure": "InfrastructureError: evaluation artifact download failed: no valid artifacts found to download\n",
+  "generator": "codex-exec",
+  "id": "exp-0008",
+  "protected_hash": "bd67ce77594d9d455031de21568a85a07ac52de2e10b82e2dc8b1897458d2368",
+  "schema_version": 1,
+  "started_at": "2026-08-31T00:26:15.460075+00:00",
+  "status": "infrastructure_error"
+}
