@@ -1,9 +1,9 @@
 """Readable learned-evaluation chess agent for the AI Chessathon.
 
-The shipped model is a small linear evaluator trained by
-``training/train_linear_evaluator.py``. Its output is the only non-terminal
-leaf evaluation used by the search, so the learned model materially determines
-move selection.
+The shipped model is a compact tapered piece-square evaluator produced by the
+protected offline training pipeline. Its output is the only non-terminal leaf
+evaluation used by the search, so the learned model materially determines move
+selection.
 """
 
 from __future__ import annotations
@@ -21,43 +21,56 @@ WEIGHTS: tuple[float, ...] = tuple(float(value) for value in MODEL["weights"])
 BIAS = float(MODEL["bias"])
 
 MATE = 1_000_000.0
+SQUARE_FEATURES = 6 * 64
+ENDGAME_OFFSET = SQUARE_FEATURES
+CASTLING_OFFSET = SQUARE_FEATURES * 2
+PHASE_VALUES = (0, 0, 1, 1, 2, 4, 0)
+MAX_PHASE = 24
 MAX_DEPTH = 5
 QUIESCENCE_DEPTH = 2
 TT_LIMIT = 50_000
 TIME_CHECK_MASK = 63
+NULL_REDUCTION = 2
+TT_EXACT = 0
+TT_LOWER = 1
+TT_UPPER = 2
 
 _deadline = math.inf
 _nodes = 0
-_tt: dict[tuple[object, int], float] = {}
+_tt: dict[object, tuple[int, float, int, chess.Move | None]] = {}
 
 
 class SearchTimeout(Exception):
     """Internal control flow used to return the last completed iteration."""
 
 
-def _features(board: chess.Board) -> tuple[float, ...]:
-    """Model features from the point of view of the side to move."""
-    side = board.turn
-    features: list[float] = []
-    for piece_type in range(chess.PAWN, chess.KING + 1):
-        features.append(
-            float(len(board.pieces(piece_type, side)) - len(board.pieces(piece_type, not side)))
-        )
-    for piece_type in range(chess.PAWN, chess.KING + 1):
-        activity = 0.0
-        for colour, sign in ((side, 1.0), (not side, -1.0)):
-            for square in board.pieces(piece_type, colour):
-                file_distance = abs(chess.square_file(square) - 3.5)
-                rank_distance = abs(chess.square_rank(square) - 3.5)
-                activity += sign * (3.5 - (file_distance + rank_distance) / 2.0)
-        features.append(activity)
-    return tuple(features)
-
-
 def _model_evaluate(board: chess.Board) -> float:
-    """Learned leaf evaluation; no handcrafted leaf score is mixed in."""
-    pairs = zip(WEIGHTS, _features(board), strict=True)
-    return BIAS + sum(weight * value for weight, value in pairs)
+    """Taper the learned piece-square model by remaining material phase."""
+    side = board.turn
+    midgame = 0.0
+    endgame = 0.0
+    phase = 0
+    for colour, sign in ((side, 1.0), (not side, -1.0)):
+        for piece_type in range(chess.PAWN, chess.KING + 1):
+            squares = board.pieces(piece_type, colour)
+            phase += PHASE_VALUES[piece_type] * len(squares)
+            offset = (piece_type - 1) * 64
+            for square in squares:
+                relative = square if colour == chess.WHITE else chess.square_mirror(square)
+                midgame += sign * WEIGHTS[offset + relative]
+                endgame += sign * WEIGHTS[ENDGAME_OFFSET + offset + relative]
+
+    blend = min(1.0, phase / MAX_PHASE)
+    score = blend * midgame + (1.0 - blend) * endgame
+    if board.has_kingside_castling_rights(side):
+        score += WEIGHTS[CASTLING_OFFSET]
+    if board.has_kingside_castling_rights(not side):
+        score -= WEIGHTS[CASTLING_OFFSET]
+    if board.has_queenside_castling_rights(side):
+        score += WEIGHTS[CASTLING_OFFSET + 1]
+    if board.has_queenside_castling_rights(not side):
+        score -= WEIGHTS[CASTLING_OFFSET + 1]
+    return BIAS + score
 
 
 def _ordered_moves(board: chess.Board, principal: chess.Move | None = None) -> list[chess.Move]:
@@ -101,7 +114,7 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
 
     moves = _ordered_moves(board)
     if not in_check:
-        moves = [move for move in moves if board.is_capture(move)]
+        moves = [move for move in moves if board.is_capture(move) or move.promotion]
     if not moves:
         return _model_evaluate(board)
 
@@ -127,24 +140,68 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
     if depth == 0:
         return _quiescence(board, alpha, beta, QUIESCENCE_DEPTH)
 
-    key = (board._transposition_key(), depth)
-    cached = _tt.get(key)
-    if cached is not None:
-        return cached
+    alpha_original = alpha
+    beta_original = beta
+    key = board._transposition_key()
+    entry = _tt.get(key)
+    principal: chess.Move | None = None
+    if entry is not None:
+        entry_depth, entry_score, entry_flag, principal = entry
+        if entry_depth >= depth:
+            if entry_flag == TT_EXACT:
+                return entry_score
+            if entry_flag == TT_LOWER:
+                alpha = max(alpha, entry_score)
+            else:
+                beta = min(beta, entry_score)
+            if alpha >= beta:
+                return entry_score
+
+    if (
+        depth >= 3
+        and math.isfinite(beta)
+        and not board.is_check()
+        and bool(board.knights | board.bishops | board.rooks | board.queens)
+    ):
+        board.push(chess.Move.null())
+        null_score = -_negamax(
+            board,
+            depth - 1 - NULL_REDUCTION,
+            -beta,
+            -beta + 1.0,
+        )
+        board.pop()
+        if null_score >= beta:
+            return null_score
+
     best = -math.inf
-    for move in _ordered_moves(board):
+    best_move: chess.Move | None = None
+    for move_number, move in enumerate(_ordered_moves(board, principal)):
         board.push(move)
-        score = -_negamax(board, depth - 1, -beta, -alpha)
+        if move_number == 0:
+            score = -_negamax(board, depth - 1, -beta, -alpha)
+        else:
+            score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha)
+            if alpha < score < beta:
+                score = -_negamax(board, depth - 1, -beta, -alpha)
         board.pop()
         if score > best:
             best = score
+            best_move = move
         if score > alpha:
             alpha = score
         if alpha >= beta:
             break
-    if len(_tt) >= TT_LIMIT:
+    if len(_tt) >= TT_LIMIT and key not in _tt:
         _tt.clear()
-    _tt[key] = best
+    if best <= alpha_original:
+        flag = TT_UPPER
+    elif best >= beta_original:
+        flag = TT_LOWER
+    else:
+        flag = TT_EXACT
+    if entry is None or depth >= entry[0]:
+        _tt[key] = (depth, best, flag, best_move)
     return best
 
 
@@ -152,10 +209,15 @@ def _root_search(board: chess.Board, depth: int, previous: chess.Move) -> chess.
     best_move = previous
     best_score = -math.inf
     alpha = -math.inf
-    for move in _ordered_moves(board, previous):
+    for move_number, move in enumerate(_ordered_moves(board, previous)):
         _check_time()
         board.push(move)
-        score = -_negamax(board, depth - 1, -math.inf, -alpha)
+        if move_number == 0:
+            score = -_negamax(board, depth - 1, -math.inf, math.inf)
+        else:
+            score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha)
+            if score > alpha:
+                score = -_negamax(board, depth - 1, -math.inf, -alpha)
         board.pop()
         if score > best_score:
             best_score = score
@@ -168,7 +230,7 @@ def _budget_seconds(time_left_ms: int) -> float:
     if time_left_ms <= 5:
         return 0.0
     clock = time_left_ms / 1000.0
-    return min(0.35, max(0.002, clock / 80.0), max(0.0, clock - 0.003))
+    return min(0.70, max(0.002, clock / 35.0), max(0.0, clock - 0.003))
 
 
 def get_move(fen: str, time_left_ms: int) -> str:
