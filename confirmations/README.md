@@ -34,3 +34,17 @@ standalone statistical strength claim.
 The extra quiescence ply is confirmed on a disjoint opening distribution and
 remains positive under the exact 120 s + 0.5 s protocol. The exact-clock sample
 is supportive rather than independently conclusive.
+
+## Experiment 32 versus experiment 31
+
+- Candidate: `e16c4e952e98913d60c6b1fed1b47c6e3ca0f2ca`
+- Champion: `829d46fe8e47a638e2dcc0b94111e1605cfc434d`
+- Frozen promotion-arena result: 19 wins, 24 draws, 21 losses; 48.4375%
+- Exact-clock exploratory result: 4 wins, 2 draws, 2 losses; 62.5%
+- Exact-clock failures: zero for either agent
+
+The candidate is intentionally identical to the champion's clock allocation
+in the fast arena, where its result was inconclusive. Its first exact-clock
+sample is promising but too small for promotion. It is retained as exploratory
+evidence only; any promotion decision must use the subsequently declared,
+disjoint prospective real-clock gate.
