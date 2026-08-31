@@ -34,6 +34,8 @@ TIME_CHECK_MASK = 63
 _deadline = math.inf
 _nodes = 0
 _tt: dict[tuple[object, int], float] = {}
+_history: dict[tuple[bool, int, int], int] = {}
+_killers: dict[int, list[chess.Move]] = {}
 
 
 class SearchTimeout(Exception):
@@ -69,18 +71,41 @@ def _model_evaluate(board: chess.Board) -> float:
     return BIAS + score
 
 
-def _ordered_moves(board: chess.Board, principal: chess.Move | None = None) -> list[chess.Move]:
-    def priority(move: chess.Move) -> tuple[int, int, int, str]:
+def _ordered_moves(
+    board: chess.Board, principal: chess.Move | None = None, ply: int = 0
+) -> list[chess.Move]:
+    killers = _killers.get(ply, [])
+
+    def priority(move: chess.Move) -> tuple[int, int, int, int, int, int, str]:
         victim = board.piece_type_at(move.to_square) or 0
         attacker = board.piece_type_at(move.from_square) or 0
+        capture = board.is_capture(move)
+        killer_rank = 2 - killers.index(move) if not capture and move in killers else 0
+        history = _history.get((board.turn, move.from_square, move.to_square), 0)
         return (
             1 if move == principal else 0,
             1 if move.promotion else 0,
+            1 if capture else 0,
             victim * 10 - attacker,
+            killer_rank,
+            history,
             move.uci(),
         )
 
     return sorted(board.legal_moves, key=priority, reverse=True)
+
+
+def _record_cutoff(board: chess.Board, move: chess.Move, depth: int, ply: int) -> None:
+    """Reward quiet beta cutoffs for ordering later nodes in the same game."""
+    if board.is_capture(move) or move.promotion:
+        return
+    key = (board.turn, move.from_square, move.to_square)
+    _history[key] = min(1_000_000, _history.get(key, 0) + depth * depth)
+    killers = _killers.setdefault(ply, [])
+    if move in killers:
+        killers.remove(move)
+    killers.insert(0, move)
+    del killers[2:]
 
 
 def _check_time() -> None:
@@ -126,7 +151,7 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
     return best
 
 
-def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float:
+def _negamax(board: chess.Board, depth: int, alpha: float, beta: float, ply: int) -> float:
     _check_time()
     outcome = board.outcome(claim_draw=True)
     if outcome is not None:
@@ -141,15 +166,16 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
     if cached is not None:
         return cached
     best = -math.inf
-    for move in _ordered_moves(board):
+    for move in _ordered_moves(board, ply=ply):
         board.push(move)
-        score = -_negamax(board, depth - 1, -beta, -alpha)
+        score = -_negamax(board, depth - 1, -beta, -alpha, ply + 1)
         board.pop()
         if score > best:
             best = score
         if score > alpha:
             alpha = score
         if alpha >= beta:
+            _record_cutoff(board, move, depth, ply)
             break
     if len(_tt) >= TT_LIMIT:
         _tt.clear()
@@ -164,7 +190,7 @@ def _root_search(board: chess.Board, depth: int, previous: chess.Move) -> chess.
     for move in _ordered_moves(board, previous):
         _check_time()
         board.push(move)
-        score = -_negamax(board, depth - 1, -math.inf, -alpha)
+        score = -_negamax(board, depth - 1, -math.inf, -alpha, 1)
         board.pop()
         if score > best_score:
             best_score = score
