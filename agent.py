@@ -30,10 +30,13 @@ MAX_DEPTH = 6
 QUIESCENCE_DEPTH = 2
 TT_LIMIT = 50_000
 TIME_CHECK_MASK = 63
+TT_EXACT = 0
+TT_LOWER = 1
+TT_UPPER = 2
 
 _deadline = math.inf
 _nodes = 0
-_tt: dict[tuple[object, int], float] = {}
+_tt: dict[tuple[object, int, int], tuple[float, int]] = {}
 
 
 class SearchTimeout(Exception):
@@ -136,10 +139,20 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
     if depth == 0:
         return _quiescence(board, alpha, beta, QUIESCENCE_DEPTH)
 
-    key = (board._transposition_key(), depth)
+    alpha_original = alpha
+    beta_original = beta
+    key = (board._transposition_key(), board.halfmove_clock, depth)
     cached = _tt.get(key)
     if cached is not None:
-        return cached
+        cached_score, flag = cached
+        if flag == TT_EXACT:
+            return cached_score
+        if flag == TT_LOWER:
+            alpha = max(alpha, cached_score)
+        else:
+            beta = min(beta, cached_score)
+        if alpha >= beta:
+            return cached_score
     best = -math.inf
     for move in _ordered_moves(board):
         board.push(move)
@@ -153,7 +166,12 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
             break
     if len(_tt) >= TT_LIMIT:
         _tt.clear()
-    _tt[key] = best
+    flag = TT_EXACT
+    if best <= alpha_original:
+        flag = TT_UPPER
+    elif best >= beta_original:
+        flag = TT_LOWER
+    _tt[key] = (best, flag)
     return best
 
 
