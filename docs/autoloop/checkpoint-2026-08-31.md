@@ -81,6 +81,50 @@ steady-state iteration therefore takes roughly 7.4 minutes: about 2.7 minutes
 for generation and 4.7 minutes for GitHub build, evaluation, and the maximum
 64-game arena. Strong candidates can stop at an earlier declared boundary.
 
+## Bounded strength batch through experiment 17
+
+Experiments 10–17 were run without changing the frozen arena threshold. Every
+candidate and PGN remains in `experiments/`; no candidate was promoted and the
+champion is still `ab5286b54b1e35988c681ca26cfec34b1122cdb8`.
+
+| Experiment | Change | W-D-L | Score | 90% interval | Decision |
+| --- | --- | ---: | ---: | ---: | --- |
+| 10 | checking-move ordering | 14-37-13 | 50.8% | 43.6%–58.0% | inconclusive |
+| 11 | mate-distance terminal scoring | 13-37-14 | 49.2% | 42.0%–56.4% | inconclusive |
+| 12 | first offline-teacher evaluator | — | — | — | protected image dependency failure |
+| 13 | exact experiment 12 replay after infrastructure repair | 1-15-16 | 26.6% | 18.6%–36.5% | rejected |
+| 14 | quiet-position, material-anchored tapered evaluator | 15-32-17 | 48.4% | 41.3%–55.7% | inconclusive |
+| 15 | bounded principal-variation/null-move search | 12-39-13 | 49.2% | 42.0%–56.4% | inconclusive |
+| 16 | constrained compact positional evaluator | 12-32-20 | 43.8% | 36.7%–51.0% | inconclusive |
+| 17 | independently generated 3,163-position opening book | 11-42-11 | 50.0% | 42.8%–57.2% | inconclusive |
+
+The first teacher model exposed a data-quality failure: noisy tactical random
+positions let linear regression learn absurd material scales. The repaired
+trainer now uses quiet legal positions, a conventional material prior, a
+recorded teacher-binary hash, deterministic node limits, and a dataset digest.
+The corrected tapered model learned approximately pawn 96, knight 317, bishop
+327, rook 495, and queen 896 centipawns, then tied rather than lost badly.
+
+A second protected trainer covers material, pawn structure, mobility, king
+safety, and phase in 39 runtime features. It supports a digest-verified local
+label cache, fixes material at conventional values, and constrains learned
+positional coefficients to recorded chess-valid ranges. Its lower static
+validation error did not translate into match strength, so this evaluator
+family should not receive more coefficient tuning without a better position
+distribution or model class.
+
+The opening-book generator starts from the standard initial position and never
+reads the protected benchmark opening list. Its fixed 4,4,4,4,2,2,2,2 branch
+schedule produced 3,163 entries in a 241 KB JSON source artifact. Candidate 17
+still passed learned-model ablation on 17 of 32 positions, but the book produced
+no net match advantage and was not promoted.
+
+Offline Stockfish 18 was used only as a reproducible development teacher. Its
+binary SHA-256 is
+`ae4c93fa9676ca7750d0714342fd8a5b1d018000fc6e0f6cedf112067b5ef374`.
+No candidate ZIP contains or invokes Stockfish, and the competition runtime has
+no network access.
+
 ## Actual autonomy and remaining approvals
 
 After one controller start, candidate generation, worktree isolation, branch
@@ -117,8 +161,13 @@ need dedicated hardware; match outcomes and failure evidence are retained.
 
 ## Minimal next phase
 
-Run small bounded autonomous batches and prioritize improvements to learned
-evaluation, move ordering, search efficiency, and real-clock time allocation.
-Re-run the protected release check after a statistically accepted internal
+Do not repeat the tested one-line move-ordering, mate-distance, compact-linear,
+or direct-opening-book variants. The next high-value work is a materially
+stronger model class or realistic engine-guided/self-play training distribution,
+paired with faster incremental evaluation so richer features do not reduce
+search depth. Real-clock time allocation should then be tuned against both the
+3 s + 0.05 s arena and the 120 s + 0.5 s release clock.
+
+Re-run the protected release check only after a statistically accepted internal
 champion. Do not upload until additional strength evidence supports spending a
 competition slot.
