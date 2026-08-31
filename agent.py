@@ -26,7 +26,7 @@ ENDGAME_OFFSET = SQUARE_FEATURES
 CASTLING_OFFSET = SQUARE_FEATURES * 2
 PHASE_VALUES = (0, 0, 1, 1, 2, 4, 0)
 MAX_PHASE = 24
-MAX_DEPTH = 6
+MAX_DEPTH = 8
 QUIESCENCE_DEPTH = 3
 TT_LIMIT = 50_000
 TIME_CHECK_MASK = 63
@@ -177,6 +177,8 @@ def _budget_seconds(time_left_ms: int) -> float:
     if time_left_ms <= 5:
         return 0.0
     clock = time_left_ms / 1000.0
+    if clock >= 10.0:
+        return min(2.0, max(0.68, clock / 60.0), max(0.0, clock - 0.003))
     return min(0.68, max(0.002, clock / 25.0), max(0.0, clock - 0.003))
 
 
