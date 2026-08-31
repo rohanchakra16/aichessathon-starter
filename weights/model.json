@@ -1,43 +1,287 @@
 {
-  "bias": 7.820260510873171,
+  "bias": 29.200659962460286,
   "features": [
-    "pawn_count",
-    "knight_count",
-    "bishop_count",
-    "rook_count",
-    "queen_count",
-    "king_count",
-    "pawn_activity",
-    "knight_activity",
-    "bishop_activity",
-    "rook_activity",
-    "queen_activity",
-    "king_activity"
+    "pawn",
+    "knight",
+    "bishop",
+    "rook",
+    "queen",
+    "midgame_pawn_advancement",
+    "midgame_passed_pawns",
+    "midgame_isolated_pawns",
+    "midgame_doubled_pawns",
+    "midgame_pawn_islands",
+    "midgame_bishop_pair",
+    "midgame_knight_mobility",
+    "midgame_bishop_mobility",
+    "midgame_rook_mobility",
+    "midgame_queen_mobility",
+    "midgame_rook_open_files",
+    "midgame_rook_semi_open_files",
+    "midgame_king_shield",
+    "midgame_castling_rights",
+    "midgame_center_pawns",
+    "midgame_center_control",
+    "midgame_king_centrality",
+    "endgame_pawn_advancement",
+    "endgame_passed_pawns",
+    "endgame_isolated_pawns",
+    "endgame_doubled_pawns",
+    "endgame_pawn_islands",
+    "endgame_bishop_pair",
+    "endgame_knight_mobility",
+    "endgame_bishop_mobility",
+    "endgame_rook_mobility",
+    "endgame_queen_mobility",
+    "endgame_rook_open_files",
+    "endgame_rook_semi_open_files",
+    "endgame_king_shield",
+    "endgame_castling_rights",
+    "endgame_center_pawns",
+    "endgame_center_control",
+    "endgame_king_centrality"
   ],
   "materially_drives": "all non-terminal search leaf evaluations",
-  "model_kind": "linear_leaf_evaluator",
-  "schema_version": 1,
+  "model_kind": "compact_tapered_offline_teacher_evaluator",
+  "schema_version": 3,
   "training": {
+    "coefficient_prior": [
+      10.0,
+      100.0,
+      320.0,
+      330.0,
+      500.0,
+      900.0,
+      2.0,
+      20.0,
+      -10.0,
+      -12.0,
+      -6.0,
+      30.0,
+      4.0,
+      3.0,
+      2.0,
+      1.0,
+      15.0,
+      8.0,
+      12.0,
+      15.0,
+      12.0,
+      3.0,
+      -12.0,
+      8.0,
+      50.0,
+      -8.0,
+      -10.0,
+      -4.0,
+      40.0,
+      4.0,
+      4.0,
+      3.0,
+      2.0,
+      10.0,
+      5.0,
+      0.0,
+      0.0,
+      4.0,
+      2.0,
+      12.0
+    ],
+    "dataset_sha256": "ef87ae8d2e5b8f805f68fe37f97c0dc31e52e032b64d5eebb0317f3cf716db05",
+    "endgame_coefficient_bounds": [
+      [
+        2.0,
+        15.0
+      ],
+      [
+        20.0,
+        100.0
+      ],
+      [
+        -25.0,
+        0.0
+      ],
+      [
+        -25.0,
+        0.0
+      ],
+      [
+        -15.0,
+        0.0
+      ],
+      [
+        15.0,
+        70.0
+      ],
+      [
+        0.0,
+        10.0
+      ],
+      [
+        0.0,
+        10.0
+      ],
+      [
+        0.0,
+        8.0
+      ],
+      [
+        0.0,
+        5.0
+      ],
+      [
+        0.0,
+        25.0
+      ],
+      [
+        0.0,
+        15.0
+      ],
+      [
+        0.0,
+        5.0
+      ],
+      [
+        0.0,
+        5.0
+      ],
+      [
+        0.0,
+        15.0
+      ],
+      [
+        0.0,
+        6.0
+      ],
+      [
+        5.0,
+        30.0
+      ]
+    ],
     "examples": 6000,
-    "external_engine_used": false,
-    "method": "deterministic generated-position teacher distillation",
-    "script": "training/train_linear_evaluator.py",
-    "script_sha256": "814bb81dadb874e4c3d066cd0159db3f34652eba275af3f83df8cbdb8a57a44d",
-    "seed": 20260830
+    "external_engine_used": true,
+    "method": "deterministic quiet positions labelled by an offline engine",
+    "midgame_coefficient_bounds": [
+      [
+        0.0,
+        8.0
+      ],
+      [
+        10.0,
+        60.0
+      ],
+      [
+        -30.0,
+        0.0
+      ],
+      [
+        -30.0,
+        0.0
+      ],
+      [
+        -15.0,
+        0.0
+      ],
+      [
+        10.0,
+        60.0
+      ],
+      [
+        0.0,
+        10.0
+      ],
+      [
+        0.0,
+        8.0
+      ],
+      [
+        0.0,
+        6.0
+      ],
+      [
+        0.0,
+        3.0
+      ],
+      [
+        0.0,
+        30.0
+      ],
+      [
+        0.0,
+        20.0
+      ],
+      [
+        0.0,
+        25.0
+      ],
+      [
+        0.0,
+        30.0
+      ],
+      [
+        0.0,
+        25.0
+      ],
+      [
+        0.0,
+        8.0
+      ],
+      [
+        -30.0,
+        0.0
+      ]
+    ],
+    "nodes_per_position": 2500,
+    "ridge_penalty": 1000.0,
+    "script": "training/train_compact_evaluator.py",
+    "script_sha256": "894f4989c5bca9d6520595281db5ffda1032dab2831e9e1f1fc3190af54754d0",
+    "seed": 20260831,
+    "teacher_binary_sha256": "ae4c93fa9676ca7750d0714342fd8a5b1d018000fc6e0f6cedf112067b5ef374",
+    "teacher_name": "Stockfish 18"
   },
-  "training_rmse": 2.1501306693625444,
+  "training_examples": 4800,
+  "training_rmse": 323.59223634978,
+  "validation_examples": 1200,
+  "validation_rmse": 305.61753120823806,
   "weights": [
-    100.0288220255112,
-    320.0842072328084,
-    330.130278779419,
-    500.58578860680626,
-    900.6171609034881,
+    100.0,
+    320.0,
+    330.0,
+    500.0,
+    900.0,
+    8.0,
+    10.0,
     0.0,
-    3.022272987718088,
-    3.23166494003577,
-    3.2686526556664925,
-    3.122911743904336,
-    3.3965817845244066,
-    2.953907850919425
+    -29.496277254554087,
+    -3.920635265575419,
+    10.0,
+    4.735509341707329,
+    5.501274680490365,
+    3.0835198853541277,
+    0.0,
+    12.857676093410879,
+    19.82262991530875,
+    13.764247872982672,
+    12.748505629111303,
+    20.83366694624767,
+    2.1478885301644275,
+    -30.0,
+    2.0,
+    20.0,
+    0.0,
+    -25.0,
+    -15.0,
+    17.4993213037364,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    14.007852611058802,
+    11.5854351391656,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    16.14830282452707
   ]
 }
