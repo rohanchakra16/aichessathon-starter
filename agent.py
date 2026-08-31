@@ -60,6 +60,14 @@ def _model_evaluate(board: chess.Board) -> float:
     return BIAS + sum(weight * value for weight, value in pairs)
 
 
+def _outcome_score(board: chess.Board, outcome: chess.Outcome) -> float:
+    """Score terminal positions, preferring quicker wins and slower losses."""
+    if outcome.winner is None:
+        return 0.0
+    mate_score = MATE - len(board.move_stack)
+    return mate_score if outcome.winner == board.turn else -mate_score
+
+
 def _ordered_moves(board: chess.Board, principal: chess.Move | None = None) -> list[chess.Move]:
     def priority(move: chess.Move) -> tuple[int, int, int, str]:
         victim = board.piece_type_at(move.to_square) or 0
@@ -86,9 +94,7 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
     _check_time()
     outcome = board.outcome(claim_draw=True)
     if outcome is not None:
-        if outcome.winner is None:
-            return 0.0
-        return MATE if outcome.winner == board.turn else -MATE
+        return _outcome_score(board, outcome)
     if depth == 0:
         return _model_evaluate(board)
 
@@ -121,9 +127,7 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
     _check_time()
     outcome = board.outcome(claim_draw=True)
     if outcome is not None:
-        if outcome.winner is None:
-            return 0.0
-        return MATE if outcome.winner == board.turn else -MATE
+        return _outcome_score(board, outcome)
     if depth == 0:
         return _quiescence(board, alpha, beta, QUIESCENCE_DEPTH)
 
