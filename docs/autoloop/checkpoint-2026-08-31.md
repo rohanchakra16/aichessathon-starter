@@ -12,14 +12,14 @@ The current internal champion passed the protected release workflow and is now
 an internal `submission_candidate`. This is a repository state, not a live
 competition submission.
 
-- Champion source commit: `ab5286b54b1e35988c681ca26cfec34b1122cdb8`
-- Evaluated main commit: `bfaf6a0d90bce0bb611940f9cea9532b4a6563e5`
+- Champion source commit: `064f56d246a6378d0a83a9386a31d498559ed27d`
+- Evaluated main commit: `d1f3f359c30cad092c00f04faa118834c6781641`
 - Exact ZIP SHA-256:
-  `f1d076bf6e502185dd90aa9f4fae40192c32b8ba1dc4b76d71e3dfe820162d69`
-- ZIP: 2,818 compressed bytes; 7,207 expanded bytes
-- Release run: <https://github.com/rohanchakra16/aichessathon-starter/actions/runs/33344363611>
-- Release workflow wait: 95.611 seconds
-- Protected evaluation duration: 66.188 seconds
+  `91887beea1e9d89cbb4355ceb5cd3827c35643097166ed05a7770251b9d60448`
+- ZIP: 10,804 compressed bytes; 35,275 expanded bytes
+- Release run: <https://github.com/rohanchakra16/aichessathon-starter/actions/runs/33415322062>
+- Release workflow wait: 166.098 seconds
+- Protected evaluation duration: 137.042 seconds
 
 Recorded Linux envelope:
 
@@ -30,17 +30,17 @@ Recorded Linux envelope:
 - network disabled (probe returned `ENETUNREACH`)
 - read-only repository mount
 - writable 268,435,456-byte `/tmp`
-- peak container memory: 120,139,776 bytes
+- peak container memory: 119,984,128 bytes
 - resolved evaluation image ID:
-  `sha256:ba6cd6ffe8e29d12dd30ead1ac6deaaebe75990d10470e660071ce8feb1edbce`
+  `sha256:d52f3e9d23bb3ce9cf7adfe48c85c7e4d477a95d9af75e8f98f298e75b48bb47`
 
 Release evidence:
 
 - zero static, package, initialization, legality, crash, flag, or smoke failures
-- maximum adversarial move response: 0.354 seconds
-- learned-model ablation changed 30 of 32 opening moves
-- intact learned model versus zero-weight ablation: 13 wins, 3 draws,
-  0 losses; 90.625% score over 16 paired games
+- maximum adversarial move response: 0.689 seconds
+- learned-model ablation changed 31 of 32 opening moves
+- intact learned model versus zero-weight ablation: 15 wins, 1 draw,
+  0 losses; 96.875% score over 16 paired games
 - full 120 s + 0.5 s games: two wins by checkmate, one with each colour,
   zero failures
 
@@ -48,44 +48,47 @@ Passing this gate establishes packaging, compliance, reliability evidence, and
 material model influence. It does not establish that the agent is strong enough
 for the live ladder.
 
-## Autonomous experiment verified
+## Autonomous promotion verified
 
-The AI-generated change retained as experiment 9 added more frequent deadline
-checks only under extremely short move budgets. The controller automatically:
+Experiment 23 combined the self-play-trained tapered evaluator with depth-six
+iterative search and a more assertive clock budget. The controller
+automatically:
 
 1. recovered the retained candidate into an isolated branch;
 2. pushed the candidate branch;
 3. triggered GitHub evaluation from the branch push;
 4. built and evaluated the exact ZIP inside the constrained Linux container;
-5. ran the protected 64-game candidate-versus-champion arena;
+5. ran the protected sequential candidate-versus-champion arena;
 6. downloaded the evidence;
 7. applied the fixed sequential boundary;
-8. journaled and pushed the result without a merge or approval.
+8. promoted, journaled, and pushed the accepted result without a merge approval.
 
-Experiment 9 evidence:
+Experiment 23 evidence:
 
-- candidate branch: `autoloop/candidate-0009`
-- candidate commit: `d3c88c3d2a748a2782fc26abbe0e012ccaaa1ecb`
-- workflow: <https://github.com/rohanchakra16/aichessathon-starter/actions/runs/33344796274>
+- candidate branch: `autoloop/candidate-0023`
+- candidate commit: `064f56d246a6378d0a83a9386a31d498559ed27d`
+- workflow: <https://github.com/rohanchakra16/aichessathon-starter/actions/runs/33414971398>
 - exact candidate ZIP SHA-256:
-  `c5f75b5538ecee35db24dede7b8d07a73132c119116b706a0f5e14c7ce3de134`
-- constrained checks: passed; peak memory 120,127,488 bytes
-- arena: 12 wins, 40 draws, 12 losses; 50.0% score
-- one-sided 95% interval: 42.806%–57.194%
-- decision: inconclusive; candidate retained and champion unchanged
-- protected arena duration: 230.593 seconds
-- workflow wait: 278.854 seconds
+  `91887beea1e9d89cbb4355ceb5cd3827c35643097166ed05a7770251b9d60448`
+- constrained checks: passed; zero candidate or incumbent failures
+- arena stopped at the first permitted boundary: 11 wins, 17 draws,
+  4 losses; 60.9375% score over 32 games
+- one-sided 95% interval: 50.658%–70.330%
+- decision: accepted and promoted because the lower bound exceeded 50%
+- protected arena duration: 156.395 seconds
+- workflow wait: 211.322 seconds
 
-The original AI generation took approximately 164 seconds. A comparable
-steady-state iteration therefore takes roughly 7.4 minutes: about 2.7 minutes
-for generation and 4.7 minutes for GitHub build, evaluation, and the maximum
-64-game arena. Strong candidates can stop at an earlier declared boundary.
+The accepted workflow took about 3.5 minutes after controller dispatch. A
+maximum 64-game inconclusive iteration has recently taken about 5–6 minutes,
+plus local candidate generation and screening. Strong candidates can stop at
+the fixed 32-game boundary, as experiment 23 did.
 
-## Bounded strength batch through experiment 18
+## Bounded strength batch through experiment 23
 
-Experiments 10–18 were run without changing the frozen arena threshold. Every
-candidate and PGN remains in `experiments/`; no candidate was promoted and the
-champion is still `ab5286b54b1e35988c681ca26cfec34b1122cdb8`.
+Experiments 10–23 were run without changing the frozen arena threshold. Every
+candidate and PGN remains in `experiments/`. Experiment 23 is the first
+statistically accepted promotion; the champion is now
+`064f56d246a6378d0a83a9386a31d498559ed27d`.
 
 | Experiment | Change | W-D-L | Score | 90% interval | Decision |
 | --- | --- | ---: | ---: | ---: | --- |
@@ -98,6 +101,19 @@ champion is still `ab5286b54b1e35988c681ca26cfec34b1122cdb8`.
 | 16 | constrained compact positional evaluator | 12-32-20 | 43.8% | 36.7%–51.0% | inconclusive |
 | 17 | independently generated 3,163-position opening book | 11-42-11 | 50.0% | 42.8%–57.2% | inconclusive |
 | 18 | search among three ranked opening candidates | 10-46-8 | 51.6% | 44.3%–58.7% | inconclusive |
+| 19 | conservative clock budget (`clock/80`, 0.35 s cap) | 12-44-8 | 53.1% | 45.9%–60.2% | inconclusive |
+| 20 | larger clock budget (`clock/35`, 0.70 s cap) | 14-41-9 | 53.9% | 46.7%–61.0% | inconclusive |
+| 21 | realistic self-play-trained tapered evaluator | 17-38-9 | 56.2% | 49.0%–63.3% | inconclusive |
+| 22 | experiment 21 plus PVS/null-move/TT search | 15-37-12 | 52.3% | 45.1%–59.5% | inconclusive |
+| 23 | experiment 21 model, depth 6, `clock/25` budget | 11-17-4 | 60.9% | 50.7%–70.3% | **accepted** |
+
+The experiment 21–23 evaluator was trained from 8,000 quiet positions sampled
+from 587 independently generated engine-guided games. Training starts from the
+standard initial board, records the dataset and teacher hashes, uses a fixed
+node budget and sampling recipe, and clips labels at 1,500 centipawns. Its
+learned material scale is sane (approximately pawn 96, knight 317, bishop 329,
+rook 496, queen 897 centipawns). The candidate ZIP contains only the compact
+770-weight tapered model and Python agent; it contains and invokes no engine.
 
 The first teacher model exposed a data-quality failure: noisy tactical random
 positions let linear regression learn absurd material scales. The repaired
@@ -169,13 +185,15 @@ need dedicated hardware; match outcomes and failure evidence are retained.
 
 ## Minimal next phase
 
-Do not repeat the tested one-line move-ordering, mate-distance, compact-linear,
-direct-opening-book, or ranked-root-restriction variants. The next high-value
-work is a materially stronger model class or realistic engine-guided/self-play
-training distribution, paired with faster incremental evaluation so richer
-features do not reduce search depth. Real-clock time allocation should then be
-tuned against both the 3 s + 0.05 s arena and the 120 s + 0.5 s release clock.
+The requested multi-experiment batch is complete because experiment 23 was
+promoted and passed the release check. Do not repeat the tested one-line
+move-ordering, mate-distance, compact-linear, direct-opening-book,
+ranked-root-restriction, or PVS/null-move variants.
 
-Re-run the protected release check only after a statistically accepted internal
-champion. Do not upload until additional strength evidence supports spending a
-competition slot.
+Before spending a competition slot, compare the new champion against stronger
+independent opponents and expand realistic-clock evidence. The next optimiser
+batch should start from experiment 23 and test one material change at a time,
+preferably a learned move-ordering policy or a larger independently generated
+self-play dataset. Re-run the protected release check only after another
+statistically accepted champion. Do not upload without an explicit user
+instruction.
