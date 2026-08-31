@@ -7,6 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN python -m pip install --no-cache-dir \
     chess==1.11.2 \
     mypy==2.3.1 \
+    numpy==2.5.2 \
     pytest==9.1.1 \
     ruff==0.16.5
 
