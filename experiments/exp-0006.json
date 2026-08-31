@@ -1,0 +1,10 @@
+{
+  "branch": "autoloop/candidate-0006",
+  "completed_at": "2026-08-31T00:24:02.736596+00:00",
+  "failure": "CandidateError: Codex failed: WARNING: proceeding, even though we could not create PATH aliases: Operation not permitted (os error 1)\n2026-08-31T00:24:02.662598Z  WARN codex_state::runtime: failed to open state db at /Users/phantomvenom/.codex/state_5.sqlite: failed to open state DB at /Users/phantomvenom/.codex/state_5.sqlite: error returned from database: (code: 8) attempt to write a readonly database\n2026-08-31T00:24:02.662647Z  WARN codex_rollout::state_db: failed to initialize state runtime: failed to initialize state runtime at /Users/phantomvenom/.codex: failed to open state DB at /Users/phantomvenom/.codex/state_5.sqlite: error returned from database: (code: 8) attempt to write a readonly database: error returned from database: (code: 8) attempt to write a readonly database: (code: 8) attempt to write a readonly database\nReading additional input from stdin...\nError: failed to initialize in-process app-server client: Operation not permitted (os error 1)\n",
+  "id": "exp-0006",
+  "protected_hash": "bd67ce77594d9d455031de21568a85a07ac52de2e10b82e2dc8b1897458d2368",
+  "schema_version": 1,
+  "started_at": "2026-08-31T00:24:02.558314+00:00",
+  "status": "failed"
+}
