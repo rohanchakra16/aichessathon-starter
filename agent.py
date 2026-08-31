@@ -25,9 +25,11 @@ MAX_DEPTH = 5
 QUIESCENCE_DEPTH = 2
 TT_LIMIT = 50_000
 TIME_CHECK_MASK = 63
+SHORT_BUDGET_SECONDS = 0.01
 
 _deadline = math.inf
 _nodes = 0
+_time_check_mask = TIME_CHECK_MASK
 _tt: dict[tuple[object, int], float] = {}
 
 
@@ -77,7 +79,7 @@ def _ordered_moves(board: chess.Board, principal: chess.Move | None = None) -> l
 def _check_time() -> None:
     global _nodes
     _nodes += 1
-    if _nodes & TIME_CHECK_MASK == 0 and time.monotonic() >= _deadline:
+    if _nodes & _time_check_mask == 0 and time.monotonic() >= _deadline:
         raise SearchTimeout
 
 
@@ -173,7 +175,7 @@ def _budget_seconds(time_left_ms: int) -> float:
 
 def get_move(fen: str, time_left_ms: int) -> str:
     """Return a legal UCI move while retaining a conservative flag margin."""
-    global _deadline, _nodes
+    global _deadline, _nodes, _time_check_mask
     board = chess.Board(fen)
     moves = list(board.legal_moves)
     if not moves:
@@ -185,6 +187,9 @@ def get_move(fen: str, time_left_ms: int) -> str:
 
     _deadline = time.monotonic() + budget
     _nodes = 0
+    # At low clock, checking every node prevents a 64-node batch from
+    # consuming the small flag margin. Keep batched checks at normal budgets.
+    _time_check_mask = 0 if budget <= SHORT_BUDGET_SECONDS else TIME_CHECK_MASK
     for depth in range(1, MAX_DEPTH + 1):
         try:
             completed = _root_search(board, depth, best)
