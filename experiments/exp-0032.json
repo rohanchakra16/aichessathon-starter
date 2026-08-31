@@ -1263,15 +1263,26 @@
       ]
     }
   },
+  "clock_sensitive_promotion": {
+    "candidate_commit": "e16c4e952e98913d60c6b1fed1b47c6e3ca0f2ca",
+    "champion_commit": "829d46fe8e47a638e2dcc0b94111e1605cfc434d",
+    "completed_at": "2026-08-31T23:46:16.524383+00:00",
+    "decision_reason": "prospective real-clock arena accepted candidate (score 0.688, interval [0.543, 0.803])",
+    "evidence": "confirmations/exp-0032-prospective-real-clock.json",
+    "promoted_commit": "fb86594855baaa4a02c83facfc95b2fba885f833",
+    "protected_hash": "4b120fbe458b5949b4c51f7dc87268e7e60e13769b8ac272e36d0f5faff3b227",
+    "settings_key": "prospective_real_clock_arena",
+    "status": "accepted"
+  },
   "completed_at": "2026-08-31T22:59:40.166301+00:00",
-  "decision_reason": "sequential paired arena remained inconclusive (score 0.484, interval [0.413, 0.557])",
+  "decision_reason": "prospective real-clock arena accepted candidate (score 0.688, interval [0.543, 0.803])",
   "generator": "resumed-candidate",
   "id": "exp-0032",
   "protected_hash": "f539b72165ff626f9cbe21acc6dd66762e4af29b986a9f25bb06d13a786a4141",
   "resumed_after_interruption": true,
   "schema_version": 1,
   "started_at": "2026-08-31T22:51:57.728883+00:00",
-  "status": "inconclusive",
+  "status": "accepted",
   "workflow": {
     "run_id": 33448173452,
     "run_url": "https://github.com/rohanchakra16/aichessathon-starter/actions/runs/33448173452",
