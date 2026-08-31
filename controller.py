@@ -89,14 +89,11 @@ def changed_paths(base: str, head: str) -> list[str]:
 def protected_hash() -> str:
     digest = hashlib.sha256()
     paths = [
-        POLICY_PATH,
-        ROOT / ".autoloop/protected/evaluate.py",
-        ROOT / ".autoloop/protected/arena.py",
-        ROOT / ".autoloop/protected/artifact.py",
-        ROOT / ".autoloop/protected/openings.json",
-        ROOT / ".github/workflows/candidate-evaluate.yml",
+        ROOT / ".dockerignore",
         ROOT / "controller.py",
         ROOT / "Makefile",
+        *sorted(path for path in (ROOT / ".autoloop/protected").rglob("*") if path.is_file()),
+        *sorted(path for path in (ROOT / ".github/workflows").glob("*.yml") if path.is_file()),
         *sorted((ROOT / "harness").glob("*.py")),
         *sorted((ROOT / "tests/autoloop").glob("*.py")),
     ]
@@ -233,7 +230,11 @@ def github_evaluate(
                         raise InfrastructureError(
                             f"evaluation artifact download failed: {download.stderr[-4000:]}"
                         )
-                    return load(artifact_dir / "evaluation.json"), {
+                    evaluation = load(artifact_dir / "evaluation.json")
+                    arena_path = artifact_dir / "arena.json"
+                    if arena_path.exists():
+                        evaluation["paired_arena"] = load(arena_path)
+                    return evaluation, {
                         "run_id": run_id,
                         "run_url": row["url"],
                         "workflow_conclusion": row["conclusion"],
@@ -241,6 +242,124 @@ def github_evaluate(
                     }
         time.sleep(5)
     raise InfrastructureError(f"GitHub evaluation timed out; last run id: {run_id}")
+
+
+def github_release_evaluate(
+    commit: str, policy: dict[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    repository = policy["github_repository"]
+    triggered_at = time.monotonic()
+    dispatch = run(
+        [
+            "gh",
+            "workflow",
+            "run",
+            "release-evaluate.yml",
+            "--ref",
+            "main",
+            "--repo",
+            repository,
+        ],
+        check=False,
+    )
+    if dispatch.returncode:
+        raise InfrastructureError(f"release workflow dispatch failed: {dispatch.stderr[-4000:]}")
+    deadline = time.monotonic() + int(policy["release_timeout_seconds"])
+    run_id: int | None = None
+    while time.monotonic() < deadline:
+        lookup = run(
+            [
+                "gh",
+                "run",
+                "list",
+                "--workflow",
+                "release-evaluate.yml",
+                "--branch",
+                "main",
+                "--commit",
+                commit,
+                "--event",
+                "workflow_dispatch",
+                "--repo",
+                repository,
+                "--limit",
+                "1",
+                "--json",
+                "databaseId,status,conclusion,createdAt,updatedAt,url",
+            ],
+            check=False,
+        )
+        if lookup.returncode == 0:
+            rows = json.loads(lookup.stdout or "[]")
+            if rows:
+                row = rows[0]
+                run_id = int(row["databaseId"])
+                if row["status"] == "completed":
+                    artifact_dir = ROOT / f".autoloop/artifacts/release-{run_id}"
+                    artifact_dir.mkdir(parents=True, exist_ok=False)
+                    download = run(
+                        [
+                            "gh",
+                            "run",
+                            "download",
+                            str(run_id),
+                            "-n",
+                            "release-evaluation",
+                            "-D",
+                            str(artifact_dir),
+                            "--repo",
+                            repository,
+                        ],
+                        check=False,
+                    )
+                    if download.returncode:
+                        raise InfrastructureError(
+                            f"release artifact download failed: {download.stderr[-4000:]}"
+                        )
+                    return load(artifact_dir / "release-evaluation.json"), {
+                        "run_id": run_id,
+                        "run_url": row["url"],
+                        "workflow_conclusion": row["conclusion"],
+                        "wait_seconds": round(time.monotonic() - triggered_at, 3),
+                    }
+        time.sleep(5)
+    raise InfrastructureError(f"release evaluation timed out; last run id: {run_id}")
+
+
+def release_check() -> bool:
+    policy = load(POLICY_PATH)
+    state = load(STATE_PATH)
+    commit = git("rev-parse", "HEAD")
+    evaluation, workflow = github_release_evaluate(commit, policy)
+    record = {
+        "schema_version": 1,
+        "evaluated_main_commit": commit,
+        "champion_commit": state["champion_commit"],
+        "completed_at": now(),
+        "protected_hash": protected_hash(),
+        "workflow": workflow,
+        "evaluation": evaluation,
+        "status": "passed" if evaluation.get("passed") else "failed",
+    }
+    release_path = ROOT / f"releases/{commit[:12]}-{workflow['run_id']}.json"
+    atomic_json(release_path, record)
+    if evaluation.get("passed"):
+        state["submission_candidate"] = {
+            "champion_commit": state["champion_commit"],
+            "evaluated_main_commit": commit,
+            "release_record": str(release_path.relative_to(ROOT)),
+            "artifact_sha256": evaluation["package"]["sha256"],
+            "validated_at": now(),
+        }
+    atomic_json(STATE_PATH, state)
+    git("add", str(release_path.relative_to(ROOT)), ".autoloop/state.json")
+    git("commit", "-m", f"record release evaluation: {record['status']}")
+    git("push", "origin", "main")
+    print(
+        f"release evaluation {record['status']}: {workflow['run_url']}",
+        flush=True,
+    )
+    return bool(evaluation.get("passed"))
 
 
 def arena(
@@ -289,14 +408,20 @@ def decide(
     if not match.get("passed"):
         return "rejected", "candidate failed to complete the paired arena"
     score = match.get("score")
-    threshold = policy["arena"]["minimum_score"]
-    if not isinstance(score, float):
+    decision = match.get("statistical_decision")
+    interval = match.get("confidence_interval", {})
+    if not isinstance(score, (float, int)):
         return "rejected", "arena produced no numeric score"
-    if score >= threshold:
-        return "accepted", f"paired arena score {score:.3f} met {threshold:.3f}"
-    if score > 1.0 - threshold:
-        return "inconclusive", f"paired arena score {score:.3f} did not reach a boundary"
-    return "rejected", f"paired arena score {score:.3f} was below rejection boundary"
+    evidence = (
+        f"score {float(score):.3f}, interval "
+        f"[{float(interval.get('lower', 0.0)):.3f}, "
+        f"{float(interval.get('upper', 1.0)):.3f}]"
+    )
+    if decision == "accept":
+        return "accepted", f"sequential paired arena accepted candidate ({evidence})"
+    if decision == "reject":
+        return "rejected", f"sequential paired arena rejected candidate ({evidence})"
+    return "inconclusive", f"sequential paired arena remained inconclusive ({evidence})"
 
 
 def persist(
@@ -375,11 +500,7 @@ def one_iteration(args: argparse.Namespace) -> bool:
         )
         record["ci"] = ci
         record["workflow"] = workflow
-        match = (
-            arena(worktree, policy, experiment_id)
-            if ci.get("passed")
-            else {"passed": False, "skipped": True}
-        )
+        match = ci.get("paired_arena", {"passed": False, "skipped": True})
         record["arena"] = match
         status, reason = decide(ci, match, policy)
         record["decision_reason"] = reason
@@ -424,6 +545,7 @@ def main() -> int:
     parser.add_argument("--iterations", type=int, default=1)
     parser.add_argument("--continuous", action="store_true")
     parser.add_argument("--keep-worktrees", action="store_true")
+    parser.add_argument("--release-check", action="store_true")
     args = parser.parse_args()
     if args.iterations < 1:
         parser.error("--iterations must be positive")
@@ -435,6 +557,8 @@ def main() -> int:
         except BlockingIOError as exc:
             raise RuntimeError("another controller instance is already running") from exc
         preflight()
+        if args.release_check:
+            return 0 if release_check() else 1
         if args.continuous:
             stop_path = ROOT / ".autoloop/controller.stop"
             while not stop_path.exists():

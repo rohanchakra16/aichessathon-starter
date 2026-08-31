@@ -1,0 +1,60 @@
+name: release-evaluate
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Prepare retained result
+        run: |
+          mkdir -p .autoloop-container-output
+          chmod 0777 .autoloop-container-output
+          python3 -c 'import json, pathlib; pathlib.Path(".autoloop-container-output/release-evaluation.json").write_text(json.dumps({"schema_version": 2, "passed": False, "evaluator_error": "constrained release image did not complete"}, indent=2) + "\n")'
+      - name: Build pinned Linux evaluation image
+        id: image
+        continue-on-error: true
+        run: docker build --tag chessathon-release:${GITHUB_SHA} --file .autoloop/protected/Dockerfile .
+      - name: Run real-clock release evaluation
+        if: steps.image.outcome == 'success'
+        run: |
+          image_id=$(docker image inspect chessathon-release:${GITHUB_SHA} --format '{{.Id}}')
+          docker run --rm \
+            --cpus=1 \
+            --memory=2g \
+            --memory-swap=2g \
+            --pids-limit=128 \
+            --network=none \
+            --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=256m,mode=1777 \
+            --mount type=bind,source=${GITHUB_WORKSPACE},target=/workspace,readonly \
+            --mount type=bind,source=${GITHUB_WORKSPACE}/.autoloop-container-output,target=/output \
+            --cap-drop=ALL \
+            --security-opt=no-new-privileges \
+            --env AUTOLOOP_CONSTRAINED=1 \
+            --env AUTOLOOP_IMAGE_ID=${image_id} \
+            --env HOME=/tmp \
+            --env TORCH_HOME=/tmp \
+            --env HF_HOME=/tmp \
+            --env XDG_CACHE_HOME=/tmp \
+            --env RUFF_CACHE_DIR=/tmp/ruff-cache \
+            --env MYPY_CACHE_DIR=/tmp/mypy-cache \
+            chessathon-release:${GITHUB_SHA} \
+            python .autoloop/protected/evaluate.py \
+              --release \
+              --output /output/release-evaluation.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-evaluation
+          path: .autoloop-container-output/release-evaluation.json
+          if-no-files-found: error
+          retention-days: 90

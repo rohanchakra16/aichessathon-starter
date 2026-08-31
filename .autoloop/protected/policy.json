@@ -3,12 +3,14 @@
   "github_repository": "rohanchakra16/aichessathon-starter",
   "candidate_timeout_seconds": 900,
   "ci_timeout_seconds": 1200,
+  "release_timeout_seconds": 2400,
   "candidate_allowed_paths": [
     "agent.py",
     "requirements.txt",
     "weights/"
   ],
   "protected_paths": [
+    ".dockerignore",
     ".autoloop/protected/",
     ".github/workflows/",
     "AGENTS.md",
@@ -36,13 +38,34 @@
     "stress_time_left_ms": [1, 25, 100, 1000, 120000],
     "required_failures": 0
   },
+  "environment": {
+    "cpu_quota_cores": 1.0,
+    "memory_limit_bytes": 2147483648,
+    "pids_limit": 128,
+    "tmp_limit_bytes": 268435456,
+    "require_network_disabled": true,
+    "require_read_only_workspace": true
+  },
+  "model_ablation": {
+    "model_path": "weights/model.json",
+    "move_time_left_ms": 3000,
+    "minimum_move_differences": 8,
+    "strength_games": 16,
+    "minimum_strength_score": 0.625,
+    "base_ms": 3000,
+    "increment_ms": 50,
+    "ply_cap": 180
+  },
   "arena": {
     "openings_file": ".autoloop/protected/openings.json",
-    "games": 16,
+    "games": 64,
+    "minimum_games": 32,
+    "batch_games": 16,
     "base_ms": 3000,
     "increment_ms": 50,
     "ply_cap": 180,
-    "minimum_score": 0.625
+    "confidence_z": 1.6448536269514722,
+    "null_score": 0.5
   },
   "release": {
     "real_clock_games": 2,

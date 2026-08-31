@@ -9,6 +9,9 @@ import chess
 
 import controller
 
+sys.path.insert(0, str(controller.ROOT / ".autoloop/protected"))
+from arena import statistical_decision, wilson_score_interval
+
 
 def policy() -> dict[str, Any]:
     return controller.load(controller.POLICY_PATH)
@@ -42,16 +45,44 @@ def test_decision_requires_compliance_before_strength() -> None:
 
 def test_decision_accepts_only_promotion_boundary() -> None:
     status, _ = controller.decide(
-        {"passed": True}, {"passed": True, "score": 0.625}, policy()
+        {"passed": True},
+        {
+            "passed": True,
+            "score": 0.75,
+            "statistical_decision": "accept",
+            "confidence_interval": {"lower": 0.6, "upper": 0.85},
+        },
+        policy(),
     )
     assert status == "accepted"
 
 
 def test_decision_preserves_inconclusive_result() -> None:
     status, _ = controller.decide(
-        {"passed": True}, {"passed": True, "score": 0.5}, policy()
+        {"passed": True},
+        {
+            "passed": True,
+            "score": 0.5,
+            "statistical_decision": "inconclusive",
+            "confidence_interval": {"lower": 0.4, "upper": 0.6},
+        },
+        policy(),
     )
     assert status == "inconclusive"
+
+
+def test_decision_honours_statistical_rejection() -> None:
+    status, _ = controller.decide(
+        {"passed": True},
+        {
+            "passed": True,
+            "score": 0.25,
+            "statistical_decision": "reject",
+            "confidence_interval": {"lower": 0.15, "upper": 0.4},
+        },
+        policy(),
+    )
+    assert status == "rejected"
 
 
 def test_upload_boundary_is_disabled() -> None:
@@ -79,6 +110,27 @@ def test_frozen_openings_are_legal_and_paired() -> None:
             move = chess.Move.from_uci(uci)
             assert move in board.legal_moves
             board.push(move)
+
+
+def test_sequential_boundaries_are_declared_and_directional() -> None:
+    settings = policy()["arena"]
+    assert settings["minimum_games"] % settings["batch_games"] == 0
+    assert settings["games"] % settings["batch_games"] == 0
+    accept, lower, _ = statistical_decision(28, 4, 0, settings)
+    reject, _, upper = statistical_decision(0, 4, 28, settings)
+    assert accept == "accept" and lower > settings["null_score"]
+    assert reject == "reject" and upper < settings["null_score"]
+
+
+def test_wilson_interval_contains_even_score() -> None:
+    lower, upper = wilson_score_interval(8, 16, 8, 1.6448536269514722)
+    assert lower < 0.5 < upper
+
+
+def test_release_gate_cannot_upload_to_competition() -> None:
+    workflow = (controller.ROOT / ".github/workflows/release-evaluate.yml").read_text()
+    assert "workflow_dispatch" in workflow
+    assert "aichessathon.com" not in workflow
 
 
 def test_release_zip_is_byte_reproducible() -> None:

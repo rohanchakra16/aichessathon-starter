@@ -10,24 +10,79 @@ permissions:
 
 jobs:
   evaluate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@v7
-        with:
-          python-version: "3.12"
-          enable-cache: true
-      - run: uv sync --locked
-      - name: Evaluate exact submission artifact
-        run: uv run python .autoloop/protected/evaluate.py --output evaluation.json
+          fetch-depth: 2
+      - name: Prepare retained result
+        run: |
+          mkdir -p .autoloop-container-output
+          chmod 0777 .autoloop-container-output
+          python3 -c 'import json, pathlib; pathlib.Path(".autoloop-container-output/evaluation.json").write_text(json.dumps({"schema_version": 2, "passed": False, "evaluator_error": "constrained image did not complete"}, indent=2) + "\n")'
+      - name: Build pinned Linux evaluation image
+        id: image
+        continue-on-error: true
+        run: docker build --tag chessathon-evaluation:${GITHUB_SHA} --file .autoloop/protected/Dockerfile .
+      - name: Evaluate exact artifact inside competition envelope
+        if: steps.image.outcome == 'success'
+        run: |
+          image_id=$(docker image inspect chessathon-evaluation:${GITHUB_SHA} --format '{{.Id}}')
+          docker run --rm \
+            --cpus=1 \
+            --memory=2g \
+            --memory-swap=2g \
+            --pids-limit=128 \
+            --network=none \
+            --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=256m,mode=1777 \
+            --mount type=bind,source=${GITHUB_WORKSPACE},target=/workspace,readonly \
+            --mount type=bind,source=${GITHUB_WORKSPACE}/.autoloop-container-output,target=/output \
+            --cap-drop=ALL \
+            --security-opt=no-new-privileges \
+            --env AUTOLOOP_CONSTRAINED=1 \
+            --env AUTOLOOP_IMAGE_ID=${image_id} \
+            --env HOME=/tmp \
+            --env TORCH_HOME=/tmp \
+            --env HF_HOME=/tmp \
+            --env XDG_CACHE_HOME=/tmp \
+            --env RUFF_CACHE_DIR=/tmp/ruff-cache \
+            --env MYPY_CACHE_DIR=/tmp/mypy-cache \
+            chessathon-evaluation:${GITHUB_SHA} \
+            python .autoloop/protected/evaluate.py --output /output/evaluation.json
+      - name: Run sequential paired arena in the same envelope
+        if: steps.image.outcome == 'success'
+        run: |
+          python3 -c 'import json, sys; sys.exit(0 if json.load(open(".autoloop-container-output/evaluation.json"))["passed"] else 1)'
+          champion_dir=$(mktemp -d)
+          git worktree add --detach ${champion_dir} HEAD^
+          docker run --rm \
+            --cpus=1 \
+            --memory=2g \
+            --memory-swap=2g \
+            --pids-limit=128 \
+            --network=none \
+            --read-only \
+            --tmpfs /tmp:rw,nosuid,nodev,size=256m,mode=1777 \
+            --mount type=bind,source=${GITHUB_WORKSPACE},target=/workspace,readonly \
+            --mount type=bind,source=${champion_dir},target=/champion,readonly \
+            --mount type=bind,source=${GITHUB_WORKSPACE}/.autoloop-container-output,target=/output \
+            --cap-drop=ALL \
+            --security-opt=no-new-privileges \
+            --env HOME=/tmp \
+            --env XDG_CACHE_HOME=/tmp \
+            chessathon-evaluation:${GITHUB_SHA} \
+            python .autoloop/protected/arena.py \
+              --candidate /workspace \
+              --champion /champion \
+              --policy /workspace/.autoloop/protected/policy.json \
+              --output /output/arena.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: evaluation
-          path: evaluation.json
+          path: .autoloop-container-output/
           if-no-files-found: error
           retention-days: 30
-
