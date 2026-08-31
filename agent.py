@@ -1,9 +1,9 @@
 """Readable learned-evaluation chess agent for the AI Chessathon.
 
-The shipped model is a small linear evaluator trained by
-``training/train_linear_evaluator.py``. Its output is the only non-terminal
-leaf evaluation used by the search, so the learned model materially determines
-move selection.
+The shipped model is a compact tapered piece-square evaluator produced by the
+protected offline training pipeline. Its output is the only non-terminal leaf
+evaluation used by the search, so the learned model materially determines move
+selection.
 """
 
 from __future__ import annotations
@@ -21,6 +21,11 @@ WEIGHTS: tuple[float, ...] = tuple(float(value) for value in MODEL["weights"])
 BIAS = float(MODEL["bias"])
 
 MATE = 1_000_000.0
+SQUARE_FEATURES = 6 * 64
+ENDGAME_OFFSET = SQUARE_FEATURES
+CASTLING_OFFSET = SQUARE_FEATURES * 2
+PHASE_VALUES = (0, 0, 1, 1, 2, 4, 0)
+MAX_PHASE = 24
 MAX_DEPTH = 5
 QUIESCENCE_DEPTH = 2
 TT_LIMIT = 50_000
@@ -35,29 +40,33 @@ class SearchTimeout(Exception):
     """Internal control flow used to return the last completed iteration."""
 
 
-def _features(board: chess.Board) -> tuple[float, ...]:
-    """Model features from the point of view of the side to move."""
-    side = board.turn
-    features: list[float] = []
-    for piece_type in range(chess.PAWN, chess.KING + 1):
-        features.append(
-            float(len(board.pieces(piece_type, side)) - len(board.pieces(piece_type, not side)))
-        )
-    for piece_type in range(chess.PAWN, chess.KING + 1):
-        activity = 0.0
-        for colour, sign in ((side, 1.0), (not side, -1.0)):
-            for square in board.pieces(piece_type, colour):
-                file_distance = abs(chess.square_file(square) - 3.5)
-                rank_distance = abs(chess.square_rank(square) - 3.5)
-                activity += sign * (3.5 - (file_distance + rank_distance) / 2.0)
-        features.append(activity)
-    return tuple(features)
-
-
 def _model_evaluate(board: chess.Board) -> float:
-    """Learned leaf evaluation; no handcrafted leaf score is mixed in."""
-    pairs = zip(WEIGHTS, _features(board), strict=True)
-    return BIAS + sum(weight * value for weight, value in pairs)
+    """Taper the learned piece-square model by remaining material phase."""
+    side = board.turn
+    midgame = 0.0
+    endgame = 0.0
+    phase = 0
+    for colour, sign in ((side, 1.0), (not side, -1.0)):
+        for piece_type in range(chess.PAWN, chess.KING + 1):
+            squares = board.pieces(piece_type, colour)
+            phase += PHASE_VALUES[piece_type] * len(squares)
+            offset = (piece_type - 1) * 64
+            for square in squares:
+                relative = square if colour == chess.WHITE else chess.square_mirror(square)
+                midgame += sign * WEIGHTS[offset + relative]
+                endgame += sign * WEIGHTS[ENDGAME_OFFSET + offset + relative]
+
+    blend = min(1.0, phase / MAX_PHASE)
+    score = blend * midgame + (1.0 - blend) * endgame
+    if board.has_kingside_castling_rights(side):
+        score += WEIGHTS[CASTLING_OFFSET]
+    if board.has_kingside_castling_rights(not side):
+        score -= WEIGHTS[CASTLING_OFFSET]
+    if board.has_queenside_castling_rights(side):
+        score += WEIGHTS[CASTLING_OFFSET + 1]
+    if board.has_queenside_castling_rights(not side):
+        score -= WEIGHTS[CASTLING_OFFSET + 1]
+    return BIAS + score
 
 
 def _ordered_moves(board: chess.Board, principal: chess.Move | None = None) -> list[chess.Move]:
@@ -168,7 +177,7 @@ def _budget_seconds(time_left_ms: int) -> float:
     if time_left_ms <= 5:
         return 0.0
     clock = time_left_ms / 1000.0
-    return min(0.35, max(0.002, clock / 80.0), max(0.0, clock - 0.003))
+    return min(0.70, max(0.002, clock / 35.0), max(0.0, clock - 0.003))
 
 
 def get_move(fen: str, time_left_ms: int) -> str:
