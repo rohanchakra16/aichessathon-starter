@@ -97,6 +97,30 @@ def test_decision_honours_statistical_rejection() -> None:
     assert status == "rejected"
 
 
+def test_clock_promotion_requires_fast_safety_and_prospective_acceptance() -> None:
+    experiment = {
+        "ci": {"passed": True},
+        "arena": {"statistical_decision": "inconclusive"},
+    }
+    match = {
+        "passed": True,
+        "score": 0.75,
+        "statistical_decision": "accept",
+        "confidence_interval": {"lower": 0.6, "upper": 0.85},
+    }
+    status, _ = controller.clock_sensitive_decide(experiment, match, policy())
+    assert status == "accepted"
+
+    experiment["arena"]["statistical_decision"] = "reject"
+    status, _ = controller.clock_sensitive_decide(experiment, match, policy())
+    assert status == "rejected"
+
+    experiment["arena"]["statistical_decision"] = "inconclusive"
+    match["statistical_decision"] = "inconclusive"
+    status, _ = controller.clock_sensitive_decide(experiment, match, policy())
+    assert status == "inconclusive"
+
+
 def test_upload_boundary_is_disabled() -> None:
     assert policy()["competition_upload_enabled"] is False
 
@@ -138,6 +162,26 @@ def test_confirmation_openings_are_independent_legal_and_paired() -> None:
     assert current["real_clock_confirmation"]["games"] == (
         2 * current["real_clock_confirmation"]["maximum_openings"]
     )
+    prospective = current["prospective_real_clock_arena"]
+    assert prospective["opening_offset"] == current["real_clock_confirmation"][
+        "maximum_openings"
+    ]
+    assert prospective["games"] == 2 * prospective["maximum_openings"]
+    exploratory_sequences = {
+        tuple(item["moves"])
+        for item in confirmation["openings"][
+            : current["real_clock_confirmation"]["maximum_openings"]
+        ]
+    }
+    prospective_sequences = {
+        tuple(item["moves"])
+        for item in confirmation["openings"][
+            prospective["opening_offset"] : prospective["opening_offset"]
+            + prospective["maximum_openings"]
+        ]
+    }
+    assert len(prospective_sequences) == 8
+    assert exploratory_sequences.isdisjoint(prospective_sequences)
     for sequence in confirmation_sequences:
         board = chess.Board()
         for uci in sequence:

@@ -212,8 +212,9 @@ def main() -> int:
     policy = load(args.policy)
     settings = policy[args.settings_key]
     openings = load(ROOT / settings["openings_file"])["openings"]
-    maximum_openings = int(settings.get("maximum_openings", len(openings)))
-    openings = openings[:maximum_openings]
+    opening_offset = int(settings.get("opening_offset", 0))
+    maximum_openings = int(settings.get("maximum_openings", len(openings) - opening_offset))
+    openings = openings[opening_offset : opening_offset + maximum_openings]
     games: list[dict[str, Any]] = []
     wins = draws = losses = 0
     failures: list[str] = []

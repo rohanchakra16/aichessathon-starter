@@ -92,6 +92,25 @@
     "confidence_z": 1.6448536269514722,
     "null_score": 0.5
   },
+  "clock_sensitive_promotion": {
+    "require_ci_passed": true,
+    "allowed_fast_arena_decisions": ["accept", "inconclusive"],
+    "real_clock_settings_key": "prospective_real_clock_arena",
+    "required_real_clock_decision": "accept"
+  },
+  "prospective_real_clock_arena": {
+    "openings_file": ".autoloop/protected/confirmation-openings.json",
+    "opening_offset": 4,
+    "maximum_openings": 8,
+    "games": 16,
+    "minimum_games": 16,
+    "batch_games": 16,
+    "base_ms": 120000,
+    "increment_ms": 500,
+    "ply_cap": 300,
+    "confidence_z": 1.6448536269514722,
+    "null_score": 0.5
+  },
   "release": {
     "real_clock_games": 2,
     "base_ms": 120000,

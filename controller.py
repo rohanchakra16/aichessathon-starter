@@ -425,6 +425,131 @@ def decide(
     return "inconclusive", f"sequential paired arena remained inconclusive ({evidence})"
 
 
+def clock_sensitive_decide(
+    experiment: dict[str, Any], match: dict[str, Any], policy: dict[str, Any]
+) -> tuple[str, str]:
+    """Apply the frozen secondary gate for changes that activate only at real clocks."""
+    settings = policy["clock_sensitive_promotion"]
+    if settings["require_ci_passed"] and not experiment.get("ci", {}).get("passed"):
+        return "rejected", "protected compliance/correctness evaluation failed"
+    fast_decision = experiment.get("arena", {}).get("statistical_decision")
+    if fast_decision not in settings["allowed_fast_arena_decisions"]:
+        return "rejected", f"fast arena decision {fast_decision!r} is not eligible"
+    if not match.get("passed"):
+        return "rejected", "prospective real-clock arena had an agent failure"
+    decision = match.get("statistical_decision")
+    score = float(match.get("score", 0.0))
+    interval = match.get("confidence_interval", {})
+    evidence = (
+        f"score {score:.3f}, interval "
+        f"[{float(interval.get('lower', 0.0)):.3f}, "
+        f"{float(interval.get('upper', 1.0)):.3f}]"
+    )
+    if decision == settings["required_real_clock_decision"]:
+        return "accepted", f"prospective real-clock arena accepted candidate ({evidence})"
+    if decision == "reject":
+        return "rejected", f"prospective real-clock arena rejected candidate ({evidence})"
+    return "inconclusive", f"prospective real-clock arena remained inconclusive ({evidence})"
+
+
+def clock_promotion(experiment_id: str) -> None:
+    """Evaluate and deterministically promote/reject one retained clock-sensitive candidate."""
+    if not experiment_id.startswith("exp-") or not experiment_id[4:].isdigit():
+        raise ValueError("clock-promotion requires an experiment id such as exp-0032")
+    policy = load(POLICY_PATH)
+    state = load(STATE_PATH)
+    experiment_path = ROOT / f"experiments/{experiment_id}.json"
+    experiment = load(experiment_path)
+    if experiment.get("id") != experiment_id:
+        raise ValueError(f"experiment record id mismatch: {experiment_id}")
+    candidate_sha = str(experiment["candidate_commit"])
+    champion_sha = str(state["champion_commit"])
+    illegal = [
+        path
+        for path in changed_paths(f"{candidate_sha}^", candidate_sha)
+        if not path_allowed(path, policy)
+    ]
+    if illegal:
+        raise CandidateError(f"clock candidate changed disallowed paths: {illegal}")
+
+    candidate_tree = WORKTREES / f"clock-{experiment_id}-candidate"
+    champion_tree = WORKTREES / f"clock-{experiment_id}-champion"
+    if candidate_tree.exists() or champion_tree.exists():
+        raise InfrastructureError("clock-promotion worktree already exists")
+    output = ROOT / f"confirmations/{experiment_id}-prospective-real-clock.json"
+    if output.exists():
+        raise InfrastructureError(f"prospective evidence already exists: {output}")
+    settings_key = str(policy["clock_sensitive_promotion"]["real_clock_settings_key"])
+    settings = policy[settings_key]
+    try:
+        git("worktree", "add", "--detach", str(candidate_tree), candidate_sha)
+        git("worktree", "add", "--detach", str(champion_tree), champion_sha)
+        environment = os.environ.copy()
+        environment.pop("CODEX_API_KEY", None)
+        environment.pop("OPENAI_API_KEY", None)
+        completed = run(
+            [
+                sys.executable,
+                ".autoloop/protected/arena.py",
+                "--candidate",
+                str(candidate_tree),
+                "--champion",
+                str(champion_tree),
+                "--policy",
+                str(POLICY_PATH),
+                "--settings-key",
+                settings_key,
+                "--output",
+                str(output),
+            ],
+            timeout=max(1200, int(settings["games"]) * 300),
+            check=False,
+            env=environment,
+        )
+        if completed.returncode or not output.exists():
+            raise InfrastructureError(
+                "prospective real-clock arena failed: "
+                f"{completed.stdout[-4000:]}\n{completed.stderr[-4000:]}"
+            )
+        match = load(output)
+        status, reason = clock_sensitive_decide(experiment, match, policy)
+        promotion_record: dict[str, Any] = {
+            "status": status,
+            "decision_reason": reason,
+            "candidate_commit": candidate_sha,
+            "champion_commit": champion_sha,
+            "protected_hash": protected_hash(),
+            "settings_key": settings_key,
+            "evidence": str(output.relative_to(ROOT)),
+            "completed_at": now(),
+        }
+        if status == "accepted":
+            git("cherry-pick", candidate_sha)
+            promoted_sha = git("rev-parse", "HEAD")
+            state["champion_commit"] = promoted_sha
+            state["submission_candidate"] = None
+            promotion_record["promoted_commit"] = promoted_sha
+        experiment["clock_sensitive_promotion"] = promotion_record
+        experiment["status"] = status
+        experiment["decision_reason"] = reason
+        atomic_json(experiment_path, experiment)
+        atomic_json(STATE_PATH, state)
+        git(
+            "add",
+            str(experiment_path.relative_to(ROOT)),
+            str(output.relative_to(ROOT)),
+            ".autoloop/state.json",
+        )
+        git("commit", "-m", f"record clock promotion {experiment_id}: {status}")
+        git("push", "origin", "main")
+        print(f"{experiment_id} clock promotion: {status}: {reason}", flush=True)
+    finally:
+        if candidate_tree.exists():
+            git("worktree", "remove", "--force", str(candidate_tree), check=False)
+        if champion_tree.exists():
+            git("worktree", "remove", "--force", str(champion_tree), check=False)
+
+
 def persist(
     experiment_id: str,
     record: dict[str, Any],
@@ -547,6 +672,7 @@ def main() -> int:
     parser.add_argument("--continuous", action="store_true")
     parser.add_argument("--keep-worktrees", action="store_true")
     parser.add_argument("--release-check", action="store_true")
+    parser.add_argument("--clock-promotion")
     args = parser.parse_args()
     if args.iterations < 1:
         parser.error("--iterations must be positive")
@@ -560,6 +686,9 @@ def main() -> int:
         preflight()
         if args.release_check:
             return 0 if release_check() else 1
+        if args.clock_promotion:
+            clock_promotion(args.clock_promotion)
+            return 0
         if args.continuous:
             stop_path = ROOT / ".autoloop/controller.stop"
             while not stop_path.exists():

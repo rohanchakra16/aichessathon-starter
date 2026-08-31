@@ -50,6 +50,13 @@ Stress timing remains capped at 0.75 seconds for short clocks; only the
 120-second corpus case has a separate 2.25-second ceiling, so real-clock search
 can be tested without weakening fast-clock flag protection.
 
+Clock-sensitive candidates must still pass compliance and avoid rejection in
+the frozen fast arena. They can only be promoted by a separately declared
+prospective gate: 16 paired-colour games at 120 s + 0.5 s on eight confirmation
+openings beginning after the four openings reserved for exploratory checks.
+The prospective gate must itself return `accept`; exploratory exact-clock games
+are never counted toward that decision.
+
 `python3 controller.py --release-check` dispatches a separate protected gate.
 It adds a 16-game learned-model strength ablation and two full 120 s + 0.5 s
 two-colour games, persists the result and Linux image/resource evidence, and
