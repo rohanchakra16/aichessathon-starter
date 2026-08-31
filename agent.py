@@ -19,6 +19,8 @@ MODEL_PATH = Path(__file__).with_name("weights") / "model.json"
 MODEL = json.loads(MODEL_PATH.read_text())
 WEIGHTS: tuple[float, ...] = tuple(float(value) for value in MODEL["weights"])
 BIAS = float(MODEL["bias"])
+BOOK_PATH = Path(__file__).with_name("weights") / "opening-candidates.json"
+BOOK_MOVES: dict[str, list[str]] = json.loads(BOOK_PATH.read_text())["moves"]
 
 MATE = 1_000_000.0
 MAX_DEPTH = 5
@@ -33,6 +35,11 @@ _tt: dict[tuple[object, int], float] = {}
 
 class SearchTimeout(Exception):
     """Internal control flow used to return the last completed iteration."""
+
+
+def _position_key(board: chess.Board) -> str:
+    """Book identity without move clocks, preserving legal move state."""
+    return " ".join(board.fen(en_passant="fen").split()[:4])
 
 
 def _features(board: chess.Board) -> tuple[float, ...]:
@@ -60,7 +67,11 @@ def _model_evaluate(board: chess.Board) -> float:
     return BIAS + sum(weight * value for weight, value in pairs)
 
 
-def _ordered_moves(board: chess.Board, principal: chess.Move | None = None) -> list[chess.Move]:
+def _ordered_moves(
+    board: chess.Board,
+    principal: chess.Move | None = None,
+    candidates: list[chess.Move] | None = None,
+) -> list[chess.Move]:
     def priority(move: chess.Move) -> tuple[int, int, int, str]:
         victim = board.piece_type_at(move.to_square) or 0
         attacker = board.piece_type_at(move.from_square) or 0
@@ -71,7 +82,8 @@ def _ordered_moves(board: chess.Board, principal: chess.Move | None = None) -> l
             move.uci(),
         )
 
-    return sorted(board.legal_moves, key=priority, reverse=True)
+    moves = board.legal_moves if candidates is None else candidates
+    return sorted(moves, key=priority, reverse=True)
 
 
 def _check_time() -> None:
@@ -148,11 +160,16 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
     return best
 
 
-def _root_search(board: chess.Board, depth: int, previous: chess.Move) -> chess.Move:
+def _root_search(
+    board: chess.Board,
+    depth: int,
+    previous: chess.Move,
+    candidates: list[chess.Move] | None,
+) -> chess.Move:
     best_move = previous
     best_score = -math.inf
     alpha = -math.inf
-    for move in _ordered_moves(board, previous):
+    for move in _ordered_moves(board, previous, candidates):
         _check_time()
         board.push(move)
         score = -_negamax(board, depth - 1, -math.inf, -alpha)
@@ -178,7 +195,14 @@ def get_move(fen: str, time_left_ms: int) -> str:
     moves = list(board.legal_moves)
     if not moves:
         raise ValueError("get_move called for a terminal position")
-    best = moves[0]
+    allowed = set(moves)
+    book_moves = [
+        chess.Move.from_uci(uci)
+        for uci in BOOK_MOVES.get(_position_key(board), [])
+        if chess.Move.from_uci(uci) in allowed
+    ]
+    root_moves = book_moves or moves
+    best = root_moves[0]
     budget = _budget_seconds(time_left_ms)
     if budget == 0.0 or len(moves) == 1:
         return best.uci()
@@ -187,7 +211,7 @@ def get_move(fen: str, time_left_ms: int) -> str:
     _nodes = 0
     for depth in range(1, MAX_DEPTH + 1):
         try:
-            completed = _root_search(board, depth, best)
+            completed = _root_search(board, depth, best, root_moves)
         except SearchTimeout:
             break
         best = completed
