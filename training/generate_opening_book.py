@@ -45,23 +45,25 @@ def generate(
     engine_path: Path,
     nodes: int,
     schedule: tuple[int, ...],
+    candidate_moves: int,
     maximum_positions: int,
     progress_every: int,
-) -> dict[str, str]:
+) -> dict[str, list[str]]:
     queue: deque[tuple[chess.Board, int]] = deque([(chess.Board(), 0)])
     queued = {position_key(queue[0][0])}
-    book: dict[str, str] = {}
+    book: dict[str, list[str]] = {}
     with chess.engine.SimpleEngine.popen_uci(str(engine_path)) as engine:
         engine.configure({"Threads": 1, "Hash": 64})
         while queue and len(book) < maximum_positions:
             board, ply = queue.popleft()
             if board.is_game_over(claim_draw=True) or ply >= len(schedule):
                 continue
-            branch_count = min(schedule[ply], board.legal_moves.count())
+            legal_count = board.legal_moves.count()
+            analysis_count = min(max(schedule[ply], candidate_moves), legal_count)
             analyses = engine.analyse(
                 board,
                 chess.engine.Limit(nodes=nodes),
-                multipv=branch_count,
+                multipv=analysis_count,
             )
             if not isinstance(analyses, list):
                 analyses = [analyses]
@@ -73,9 +75,9 @@ def generate(
             if not ranked_moves:
                 continue
             key = position_key(board)
-            book[key] = ranked_moves[0].uci()
+            book[key] = [move.uci() for move in ranked_moves[:candidate_moves]]
             if ply + 1 < len(schedule):
-                for move in ranked_moves:
+                for move in ranked_moves[: schedule[ply]]:
                     child = board.copy(stack=False)
                     child.push(move)
                     child_key = position_key(child)
@@ -88,10 +90,11 @@ def generate(
 
 
 def payload(
-    book: dict[str, str],
+    book: dict[str, list[str]],
     engine_path: Path,
     nodes: int,
     schedule: tuple[int, ...],
+    candidate_moves: int,
     maximum_positions: int,
 ) -> dict[str, Any]:
     script = Path(__file__)
@@ -103,6 +106,7 @@ def payload(
             "root": chess.STARTING_FEN,
             "nodes_per_position": nodes,
             "branch_schedule": list(schedule),
+            "candidate_moves_per_position": candidate_moves,
             "maximum_positions": maximum_positions,
             "script": str(script.relative_to(Path.cwd())),
             "script_sha256": file_sha256(script),
@@ -119,13 +123,14 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--nodes", type=int, default=1000)
     parser.add_argument("--branch-schedule", type=parse_schedule, default=(4, 4, 4, 4, 2, 2, 2, 2))
+    parser.add_argument("--candidate-moves", type=int, default=3)
     parser.add_argument("--maximum-positions", type=int, default=4000)
     parser.add_argument("--engine", type=Path)
     parser.add_argument("--output", type=Path, default=Path("weights/opening-book.json"))
     parser.add_argument("--progress-every", type=int, default=250)
     args = parser.parse_args()
-    if args.nodes < 1 or args.maximum_positions < 1:
-        parser.error("nodes and maximum positions must be positive")
+    if args.nodes < 1 or args.maximum_positions < 1 or args.candidate_moves < 1:
+        parser.error("nodes, candidate moves, and maximum positions must be positive")
     discovered = shutil.which("stockfish") if args.engine is None else str(args.engine)
     if discovered is None:
         parser.error("Stockfish is required for offline book generation; pass --engine")
@@ -134,13 +139,21 @@ def main() -> None:
         engine_path,
         args.nodes,
         args.branch_schedule,
+        args.candidate_moves,
         args.maximum_positions,
         args.progress_every,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
         json.dumps(
-            payload(book, engine_path, args.nodes, args.branch_schedule, args.maximum_positions),
+            payload(
+                book,
+                engine_path,
+                args.nodes,
+                args.branch_schedule,
+                args.candidate_moves,
+                args.maximum_positions,
+            ),
             indent=2,
             sort_keys=True,
         )

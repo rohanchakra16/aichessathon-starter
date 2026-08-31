@@ -1,9 +1,10 @@
 import argparse
+from pathlib import Path
 
 import chess
 import pytest
 
-from training.generate_opening_book import parse_schedule, position_key
+from training.generate_opening_book import parse_schedule, payload, position_key
 
 
 def test_position_key_ignores_only_move_clocks() -> None:
@@ -27,3 +28,13 @@ def test_branch_schedule_is_validated() -> None:
     assert parse_schedule("4,3,2") == (4, 3, 2)
     with pytest.raises(argparse.ArgumentTypeError):
         parse_schedule("4,0,2")
+
+
+def test_payload_records_multiple_candidates_and_generation_recipe(tmp_path: Path) -> None:
+    engine = tmp_path / "teacher"
+    engine.write_bytes(b"fixed teacher")
+    book = {position_key(chess.Board()): ["e2e4", "d2d4", "g1f3"]}
+    result = payload(book, engine, 1000, (4, 2), 3, 4000)
+    assert result["moves"] == book
+    assert result["generation"]["candidate_moves_per_position"] == 3
+    assert result["generation"]["protected_opening_list_used"] is False
