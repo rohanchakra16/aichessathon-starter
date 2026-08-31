@@ -21,6 +21,11 @@ def test_submission_paths_are_candidate_editable() -> None:
     current = policy()
     assert controller.path_allowed("agent.py", current)
     assert controller.path_allowed("weights/model.json", current)
+    assert not controller.path_allowed("requirements.txt", current)
+
+
+def test_live_submission_size_limit_is_fifty_megabytes() -> None:
+    assert policy()["submission"]["expanded_size_limit_bytes"] == 50_000_000
 
 
 def test_protected_paths_are_not_candidate_editable() -> None:

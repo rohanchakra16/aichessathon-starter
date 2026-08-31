@@ -7,7 +7,6 @@ arena, and records an immutable decision before starting the next experiment.
 Candidate-editable paths are deliberately narrow:
 
 - `agent.py`
-- `requirements.txt`
 - `weights/`
 
 The controller rejects changes to the official `harness/`, acceptance policy,

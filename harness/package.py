@@ -3,7 +3,7 @@ import zipfile
 from collections.abc import Iterator
 from pathlib import Path
 
-DEFAULT_INCLUDES = ("agent.py", "requirements.txt", "weights")
+DEFAULT_INCLUDES = ("agent.py", "weights")
 SKIP = {"__pycache__", ".DS_Store"}
 
 

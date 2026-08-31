@@ -122,8 +122,8 @@ def generate_candidate(
 ) -> dict[str, str]:
     prompt = f"""You are proposing {experiment_id} for the AI Chessathon internal optimizer.
 Read AGENTS.md and the protected policy. Make one focused strength or reliability
-improvement to the submission. You may edit only agent.py, requirements.txt, or
-files under weights/. Do not edit the harness, tests, workflow, controller,
+improvement to the submission. You may edit only agent.py or files under
+weights/. Do not edit the harness, tests, workflow, controller,
 acceptance criteria, experiment state, training code, or documentation.
 Review the retained experiment journals and candidate history first; do not
 repeat a change that has already been tested.

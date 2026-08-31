@@ -36,7 +36,7 @@ than one at a time.
 
 ## Training data
 
-You have no network at runtime, so everything ships in the zip inside the 200 MB budget. Data
+You have no network at runtime, so everything ships in the zip inside the 50 MB budget. Data
 gathering happens on your machine, before you upload. Public game databases and self-play against
 your own earlier versions are both reasonable starting points. Whatever you train on, the model
 has to be yours.

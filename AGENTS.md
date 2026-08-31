@@ -23,6 +23,7 @@ There is no copy of either in this repo on purpose. Fetch the URLs.
   your next move in the same game, never to the next game.
 - Import time has a 60 second budget before the clock starts. Load weights there.
 - 120 s + 0.5 s per move, per side, on wall time. One core, 2 GB, no network, no GPU.
+- The expanded submission is at most 50 MB.
 - Illegal move, malformed output, crash, out of memory, or flag fall loses that game.
 
 ## Things that break agents here
@@ -33,8 +34,8 @@ There is no copy of either in this repo on purpose. Fetch the URLs.
 - One core. `torch.set_num_threads(1)`. More threads lose time rather than winning it.
 - Your zip is first on `sys.path`. Never name a file after a module you import: `chess.py`,
   `types.py`, `random.py` will shadow the real one and the failure will look unrelated.
-- `requirements.txt` takes plain package names and version specifiers only. No URLs, no index
-  options, no local wheels, and only packages with a Linux wheel on PyPI.
+- `requirements.txt` is ignored. Only the fixed preinstalled Python 3.12 stack may be imported:
+  torch (CPU), numpy, python-chess, onnxruntime, and numba.
 - Native binaries in the zip are rejected. Ship source; take compiled code from public packages.
 - `print` is safe. The runner points file descriptor 1 at stderr before importing the agent, so
   nothing you write can corrupt the protocol. It is discarded in rated games and shown in the
