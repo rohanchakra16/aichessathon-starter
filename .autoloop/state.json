@@ -5,10 +5,10 @@
   "next_experiment": 24,
   "schema_version": 1,
   "submission_candidate": {
-    "artifact_sha256": "f1d076bf6e502185dd90aa9f4fae40192c32b8ba1dc4b76d71e3dfe820162d69",
-    "champion_commit": "ab5286b54b1e35988c681ca26cfec34b1122cdb8",
-    "evaluated_main_commit": "bfaf6a0d90bce0bb611940f9cea9532b4a6563e5",
-    "release_record": "releases/bfaf6a0d90bc-33344363611.json",
-    "validated_at": "2026-08-31T00:23:25.515090+00:00"
+    "artifact_sha256": "91887beea1e9d89cbb4355ceb5cd3827c35643097166ed05a7770251b9d60448",
+    "champion_commit": "064f56d246a6378d0a83a9386a31d498559ed27d",
+    "evaluated_main_commit": "d1f3f359c30cad092c00f04faa118834c6781641",
+    "release_record": "releases/d1f3f359c30c-33415322062.json",
+    "validated_at": "2026-08-31T16:42:19.199858+00:00"
   }
 }
