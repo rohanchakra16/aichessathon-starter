@@ -1,0 +1,10 @@
+{
+  "branch": "autoloop/candidate-0007",
+  "completed_at": "2026-08-31T00:24:46.298714+00:00",
+  "failure": "CandidateError: Codex produced no change",
+  "id": "exp-0007",
+  "protected_hash": "bd67ce77594d9d455031de21568a85a07ac52de2e10b82e2dc8b1897458d2368",
+  "schema_version": 1,
+  "started_at": "2026-08-31T00:24:22.679748+00:00",
+  "status": "failed"
+}
