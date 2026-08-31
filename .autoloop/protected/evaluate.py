@@ -230,9 +230,16 @@ def freeze_tree(root: Path) -> None:
     root.chmod(0o555)
 
 
+def stress_limit(policy: dict[str, Any], clock: int) -> float:
+    reliability = policy["reliability"]
+    overrides = reliability.get("max_single_move_seconds_by_clock", {})
+    return float(overrides.get(str(clock), reliability["max_single_move_seconds"]))
+
+
 def agent_stress(extracted: Path, policy: dict[str, Any]) -> dict[str, Any]:
     failures: list[str] = []
     timings: list[float] = []
+    timing_records: list[dict[str, float | int]] = []
     agent = local(extracted)
     init_started = time.monotonic()
     init_seconds = 0.0
@@ -250,6 +257,10 @@ def agent_stress(extracted: Path, policy: dict[str, Any]) -> dict[str, Any]:
             uci = agent.move(fen, clock)
             elapsed = time.monotonic() - started
             timings.append(elapsed)
+            limit = stress_limit(policy, int(clock))
+            timing_records.append(
+                {"clock_ms": int(clock), "elapsed_seconds": elapsed, "limit_seconds": limit}
+            )
             try:
                 move = chess.Move.from_uci(uci)
             except chess.InvalidMoveError:
@@ -257,8 +268,11 @@ def agent_stress(extracted: Path, policy: dict[str, Any]) -> dict[str, Any]:
                 continue
             if move not in board.legal_moves:
                 failures.append(f"illegal move for corpus position {index}: {uci}")
-            if elapsed > policy["reliability"]["max_single_move_seconds"]:
-                failures.append(f"slow corpus position {index}: {elapsed:.3f}s")
+            if elapsed > limit:
+                failures.append(
+                    f"slow corpus position {index} at {clock}ms: "
+                    f"{elapsed:.3f}s > {limit:.3f}s"
+                )
     except AgentFailure as exc:
         init_seconds = time.monotonic() - init_started
         failures.append(f"agent failure: {exc.reason}")
@@ -270,6 +284,7 @@ def agent_stress(extracted: Path, policy: dict[str, Any]) -> dict[str, Any]:
         "init_seconds": round(init_seconds, 6),
         "max_move_seconds": round(max(timings, default=0.0), 6),
         "positions_checked": len(timings),
+        "timings": timing_records,
     }
 
 

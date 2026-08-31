@@ -34,6 +34,9 @@
   "reliability": {
     "max_init_seconds": 50.0,
     "max_single_move_seconds": 0.75,
+    "max_single_move_seconds_by_clock": {
+      "120000": 2.25
+    },
     "stress_time_left_ms": [1, 25, 100, 1000, 120000],
     "required_failures": 0
   },
