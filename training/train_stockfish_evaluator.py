@@ -34,6 +34,8 @@ PHASE_VALUES = {
     chess.KING: 0,
 }
 MAX_PHASE = 24
+PIECE_VALUES = (0.0, 100.0, 320.0, 330.0, 500.0, 900.0, 0.0)
+OPENINGS_PATH = Path(__file__).resolve().parents[1] / ".autoloop/protected/openings.json"
 
 
 def phase(board: chess.Board) -> float:
@@ -86,17 +88,36 @@ def choose_move(board: chess.Board, rng: random.Random) -> chess.Move:
     return rng.choices(moves, weights=weights, k=1)[0]
 
 
+def opening_board(rng: random.Random) -> chess.Board:
+    openings = json.loads(OPENINGS_PATH.read_text())["openings"]
+    board = chess.Board()
+    for uci in rng.choice(openings)["moves"]:
+        board.push_uci(uci)
+    return board
+
+
+def is_quiet(board: chess.Board) -> bool:
+    return not board.is_check() and not any(
+        board.is_capture(move) or move.promotion for move in board.legal_moves
+    )
+
+
 def generated_positions(count: int) -> list[chess.Board]:
     rng = random.Random(SEED)
     positions: list[chess.Board] = []
     while len(positions) < count:
-        board = chess.Board()
-        target = rng.randint(8, 110)
+        board = opening_board(rng)
+        target = rng.randint(8, 90)
         for ply in range(target):
             if board.is_game_over(claim_draw=True):
                 break
             board.push(choose_move(board, rng))
-            if ply >= 7 and rng.random() < 0.28 and not board.is_game_over(claim_draw=True):
+            if (
+                ply >= 3
+                and rng.random() < 0.35
+                and not board.is_game_over(claim_draw=True)
+                and is_quiet(board)
+            ):
                 positions.append(board.copy(stack=False))
                 if len(positions) == count:
                     break
@@ -131,11 +152,24 @@ def teacher_labels(
     return np.asarray(labels, dtype=np.float64), dataset_digest.hexdigest()
 
 
+def coefficient_prior() -> np.ndarray:
+    prior = np.zeros(FEATURES + 1, dtype=np.float64)
+    prior[0] = 10.0
+    for table_start in (1, 1 + SQUARE_FEATURES):
+        for piece_type in PIECE_TYPES:
+            start = table_start + (piece_type - 1) * 64
+            prior[start : start + 64] = PIECE_VALUES[piece_type]
+    return prior
+
+
 def ridge_fit(design: np.ndarray, labels: np.ndarray, penalty: float) -> np.ndarray:
     augmented = np.column_stack((np.ones(len(design)), design))
     regularizer = np.eye(augmented.shape[1], dtype=np.float64) * penalty
-    regularizer[0, 0] = 0.0
-    return np.linalg.solve(augmented.T @ augmented + regularizer, augmented.T @ labels)
+    prior = coefficient_prior()
+    return np.linalg.solve(
+        augmented.T @ augmented + regularizer,
+        augmented.T @ labels + penalty * prior,
+    )
 
 
 def root_mean_square_error(actual: np.ndarray, predicted: np.ndarray) -> float:
@@ -188,6 +222,9 @@ def model_payload(
             "examples": args.examples,
             "nodes_per_position": args.nodes,
             "ridge_penalty": args.ridge_penalty,
+            "material_prior_centipawns": list(PIECE_VALUES),
+            "quiet_positions_only": True,
+            "opening_source": str(OPENINGS_PATH.relative_to(Path.cwd())),
             "script": str(script_path.relative_to(Path.cwd())),
             "script_sha256": file_sha256(script_path),
             "external_engine_used": True,
@@ -205,7 +242,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--examples", type=int, default=6000)
     parser.add_argument("--nodes", type=int, default=2500)
-    parser.add_argument("--ridge-penalty", type=float, default=10.0)
+    parser.add_argument("--ridge-penalty", type=float, default=500.0)
     parser.add_argument("--engine", type=Path)
     parser.add_argument("--output", type=Path, default=Path("weights/model.json"))
     parser.add_argument("--progress-every", type=int, default=250)
