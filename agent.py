@@ -19,6 +19,8 @@ MODEL_PATH = Path(__file__).with_name("weights") / "model.json"
 MODEL = json.loads(MODEL_PATH.read_text())
 WEIGHTS: tuple[float, ...] = tuple(float(value) for value in MODEL["weights"])
 BIAS = float(MODEL["bias"])
+BOOK_PATH = Path(__file__).with_name("weights") / "opening-book.json"
+BOOK_MOVES: dict[str, str] = json.loads(BOOK_PATH.read_text())["moves"]
 
 MATE = 1_000_000.0
 MAX_DEPTH = 5
@@ -33,6 +35,11 @@ _tt: dict[tuple[object, int], float] = {}
 
 class SearchTimeout(Exception):
     """Internal control flow used to return the last completed iteration."""
+
+
+def _position_key(board: chess.Board) -> str:
+    """Book identity without move clocks, preserving legal move state."""
+    return " ".join(board.fen(en_passant="fen").split()[:4])
 
 
 def _features(board: chess.Board) -> tuple[float, ...]:
@@ -178,6 +185,11 @@ def get_move(fen: str, time_left_ms: int) -> str:
     moves = list(board.legal_moves)
     if not moves:
         raise ValueError("get_move called for a terminal position")
+    book_uci = BOOK_MOVES.get(_position_key(board))
+    if book_uci is not None:
+        book_move = chess.Move.from_uci(book_uci)
+        if book_move in moves:
+            return book_uci
     best = moves[0]
     budget = _budget_seconds(time_left_ms)
     if budget == 0.0 or len(moves) == 1:
