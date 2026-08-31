@@ -59,6 +59,7 @@ jobs:
           python3 -c 'import json, sys; sys.exit(0 if json.load(open(".autoloop-container-output/evaluation.json"))["passed"] else 1)'
           champion_dir=$(mktemp -d)
           git worktree add --detach ${champion_dir} HEAD^
+          chmod 0755 ${champion_dir}
           docker run --rm \
             --cpus=1 \
             --memory=2g \
@@ -84,6 +85,8 @@ jobs:
         if: always()
         with:
           name: evaluation
-          path: .autoloop-container-output/
+          path: |
+            .autoloop-container-output/evaluation.json
+            .autoloop-container-output/arena.json
           if-no-files-found: error
           retention-days: 30
