@@ -81,9 +81,9 @@ steady-state iteration therefore takes roughly 7.4 minutes: about 2.7 minutes
 for generation and 4.7 minutes for GitHub build, evaluation, and the maximum
 64-game arena. Strong candidates can stop at an earlier declared boundary.
 
-## Bounded strength batch through experiment 17
+## Bounded strength batch through experiment 18
 
-Experiments 10–17 were run without changing the frozen arena threshold. Every
+Experiments 10–18 were run without changing the frozen arena threshold. Every
 candidate and PGN remains in `experiments/`; no candidate was promoted and the
 champion is still `ab5286b54b1e35988c681ca26cfec34b1122cdb8`.
 
@@ -97,6 +97,7 @@ champion is still `ab5286b54b1e35988c681ca26cfec34b1122cdb8`.
 | 15 | bounded principal-variation/null-move search | 12-39-13 | 49.2% | 42.0%–56.4% | inconclusive |
 | 16 | constrained compact positional evaluator | 12-32-20 | 43.8% | 36.7%–51.0% | inconclusive |
 | 17 | independently generated 3,163-position opening book | 11-42-11 | 50.0% | 42.8%–57.2% | inconclusive |
+| 18 | search among three ranked opening candidates | 10-46-8 | 51.6% | 44.3%–58.7% | inconclusive |
 
 The first teacher model exposed a data-quality failure: noisy tactical random
 positions let linear regression learn absurd material scales. The repaired
@@ -118,6 +119,13 @@ reads the protected benchmark opening list. Its fixed 4,4,4,4,2,2,2,2 branch
 schedule produced 3,163 entries in a 241 KB JSON source artifact. Candidate 17
 still passed learned-model ablation on 17 of 32 positions, but the book produced
 no net match advantage and was not promoted.
+
+Experiment 18 regenerated the same independent tree with up to three ranked
+candidate moves per position and let the learned search choose among them. It
+passed model ablation on 21 of 32 positions and scored 51.6% overall. The 30
+games whose starts were covered by the tree scored 51.7%; the 34 uncovered
+games scored 51.5%. Root restriction therefore added no measurable value and
+should not receive further top-one/top-two tuning.
 
 Offline Stockfish 18 was used only as a reproducible development teacher. Its
 binary SHA-256 is
@@ -162,11 +170,11 @@ need dedicated hardware; match outcomes and failure evidence are retained.
 ## Minimal next phase
 
 Do not repeat the tested one-line move-ordering, mate-distance, compact-linear,
-or direct-opening-book variants. The next high-value work is a materially
-stronger model class or realistic engine-guided/self-play training distribution,
-paired with faster incremental evaluation so richer features do not reduce
-search depth. Real-clock time allocation should then be tuned against both the
-3 s + 0.05 s arena and the 120 s + 0.5 s release clock.
+direct-opening-book, or ranked-root-restriction variants. The next high-value
+work is a materially stronger model class or realistic engine-guided/self-play
+training distribution, paired with faster incremental evaluation so richer
+features do not reduce search depth. Real-clock time allocation should then be
+tuned against both the 3 s + 0.05 s arena and the 120 s + 0.5 s release clock.
 
 Re-run the protected release check only after a statistically accepted internal
 champion. Do not upload until additional strength evidence supports spending a
