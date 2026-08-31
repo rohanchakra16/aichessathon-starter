@@ -61,12 +61,13 @@ def _model_evaluate(board: chess.Board) -> float:
 
 
 def _ordered_moves(board: chess.Board, principal: chess.Move | None = None) -> list[chess.Move]:
-    def priority(move: chess.Move) -> tuple[int, int, int, str]:
+    def priority(move: chess.Move) -> tuple[int, int, int, int, str]:
         victim = board.piece_type_at(move.to_square) or 0
         attacker = board.piece_type_at(move.from_square) or 0
         return (
             1 if move == principal else 0,
             1 if move.promotion else 0,
+            1 if board.gives_check(move) else 0,
             victim * 10 - attacker,
             move.uci(),
         )
