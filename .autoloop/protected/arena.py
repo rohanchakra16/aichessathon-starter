@@ -206,11 +206,14 @@ def main() -> int:
     parser.add_argument("--champion", type=Path, required=True)
     parser.add_argument("--policy", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--settings-key", default="arena")
     args = parser.parse_args()
     started = time.monotonic()
     policy = load(args.policy)
-    settings = policy["arena"]
+    settings = policy[args.settings_key]
     openings = load(ROOT / settings["openings_file"])["openings"]
+    maximum_openings = int(settings.get("maximum_openings", len(openings)))
+    openings = openings[:maximum_openings]
     games: list[dict[str, Any]] = []
     wins = draws = losses = 0
     failures: list[str] = []

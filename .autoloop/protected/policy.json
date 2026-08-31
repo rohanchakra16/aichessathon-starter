@@ -66,6 +66,29 @@
     "confidence_z": 1.6448536269514722,
     "null_score": 0.5
   },
+  "confirmation_arena": {
+    "openings_file": ".autoloop/protected/confirmation-openings.json",
+    "games": 64,
+    "minimum_games": 64,
+    "batch_games": 64,
+    "base_ms": 3000,
+    "increment_ms": 50,
+    "ply_cap": 180,
+    "confidence_z": 1.6448536269514722,
+    "null_score": 0.5
+  },
+  "real_clock_confirmation": {
+    "openings_file": ".autoloop/protected/confirmation-openings.json",
+    "maximum_openings": 4,
+    "games": 8,
+    "minimum_games": 8,
+    "batch_games": 8,
+    "base_ms": 120000,
+    "increment_ms": 500,
+    "ply_cap": 300,
+    "confidence_z": 1.6448536269514722,
+    "null_score": 0.5
+  },
   "release": {
     "real_clock_games": 2,
     "base_ms": 120000,

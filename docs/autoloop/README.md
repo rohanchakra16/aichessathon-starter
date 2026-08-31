@@ -42,6 +42,11 @@ the same shared Actions runner. This is useful match evidence, but the host is
 not a dedicated fixed physical machine, so tiny nodes-per-second differences
 remain out of scope.
 
+Accepted champions are separately checked on 32 independently generated,
+near-level confirmation openings that are never used for candidate screening or
+promotion. A four-opening paired mode runs at the exact 120 s + 0.5 s clock to
+expose time-allocation changes that the fast promotion arena cannot measure.
+
 `python3 controller.py --release-check` dispatches a separate protected gate.
 It adds a 16-game learned-model strength ablation and two full 120 s + 0.5 s
 two-colour games, persists the result and Linux image/resource evidence, and

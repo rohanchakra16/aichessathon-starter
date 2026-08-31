@@ -117,6 +117,28 @@ def test_frozen_openings_are_legal_and_paired() -> None:
             board.push(move)
 
 
+def test_confirmation_openings_are_independent_legal_and_paired() -> None:
+    current = policy()
+    promotion = controller.load(controller.ROOT / current["arena"]["openings_file"])
+    confirmation = controller.load(
+        controller.ROOT / current["confirmation_arena"]["openings_file"]
+    )
+    promotion_sequences = {tuple(item["moves"]) for item in promotion["openings"]}
+    confirmation_sequences = {tuple(item["moves"]) for item in confirmation["openings"]}
+    assert len(confirmation_sequences) == 32
+    assert promotion_sequences.isdisjoint(confirmation_sequences)
+    assert current["confirmation_arena"]["games"] == 2 * len(confirmation_sequences)
+    assert current["real_clock_confirmation"]["games"] == (
+        2 * current["real_clock_confirmation"]["maximum_openings"]
+    )
+    for sequence in confirmation_sequences:
+        board = chess.Board()
+        for uci in sequence:
+            move = chess.Move.from_uci(uci)
+            assert move in board.legal_moves
+            board.push(move)
+
+
 def test_sequential_boundaries_are_declared_and_directional() -> None:
     settings = policy()["arena"]
     assert settings["minimum_games"] % settings["batch_games"] == 0
