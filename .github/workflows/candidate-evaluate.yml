@@ -22,6 +22,7 @@ jobs:
           mkdir -p .autoloop-container-output
           chmod 0777 .autoloop-container-output
           python3 -c 'import json, pathlib; pathlib.Path(".autoloop-container-output/evaluation.json").write_text(json.dumps({"schema_version": 2, "passed": False, "evaluator_error": "constrained image did not complete"}, indent=2) + "\n")'
+          chmod 0666 .autoloop-container-output/evaluation.json
       - name: Build pinned Linux evaluation image
         id: image
         continue-on-error: true
