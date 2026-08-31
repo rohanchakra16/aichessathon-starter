@@ -95,6 +95,7 @@ def protected_hash() -> str:
         *sorted(path for path in (ROOT / ".autoloop/protected").rglob("*") if path.is_file()),
         *sorted(path for path in (ROOT / ".github/workflows").glob("*.yml") if path.is_file()),
         *sorted((ROOT / "harness").glob("*.py")),
+        *sorted((ROOT / "training").glob("*.py")),
         *sorted((ROOT / "tests/autoloop").glob("*.py")),
     ]
     for path in paths:
