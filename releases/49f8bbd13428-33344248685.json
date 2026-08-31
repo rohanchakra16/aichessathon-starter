@@ -1,0 +1,19 @@
+{
+  "champion_commit": "ab5286b54b1e35988c681ca26cfec34b1122cdb8",
+  "completed_at": "2026-08-31T00:21:05.205845+00:00",
+  "evaluated_main_commit": "49f8bbd13428d427b85f4704205992db2dd9975f",
+  "evaluation": {
+    "evaluator_error": "constrained release image did not complete",
+    "passed": false,
+    "schema_version": 2
+  },
+  "protected_hash": "13db9c81b10bcd3e02aad324152f721a9111a34f89a0d2edb645ba33ee6b2df3",
+  "schema_version": 1,
+  "status": "failed",
+  "workflow": {
+    "run_id": 33344248685,
+    "run_url": "https://github.com/rohanchakra16/aichessathon-starter/actions/runs/33344248685",
+    "wait_seconds": 95.91,
+    "workflow_conclusion": "failure"
+  }
+}
