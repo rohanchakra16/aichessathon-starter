@@ -30,10 +30,15 @@ MAX_DEPTH = 8
 QUIESCENCE_DEPTH = 3
 TT_LIMIT = 50_000
 TIME_CHECK_MASK = 63
+TT_EXACT = 0
+TT_LOWER = 1
+TT_UPPER = 2
+LMR_MIN_DEPTH = 3
+LMR_QUIET_INDEX = 4
 
 _deadline = math.inf
 _nodes = 0
-_tt: dict[tuple[object, int], float] = {}
+_tt: dict[tuple[object, int, int], tuple[float, int]] = {}
 
 
 class SearchTimeout(Exception):
@@ -136,14 +141,42 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
     if depth == 0:
         return _quiescence(board, alpha, beta, QUIESCENCE_DEPTH)
 
-    key = (board._transposition_key(), depth)
+    alpha_original = alpha
+    beta_original = beta
+    key = (board._transposition_key(), board.halfmove_clock, depth)
     cached = _tt.get(key)
     if cached is not None:
-        return cached
+        cached_score, flag = cached
+        if flag == TT_EXACT:
+            return cached_score
+        if flag == TT_LOWER:
+            alpha = max(alpha, cached_score)
+        else:
+            beta = min(beta, cached_score)
+        if alpha >= beta:
+            return cached_score
     best = -math.inf
-    for move in _ordered_moves(board):
+    in_check = board.is_check()
+    for move_index, move in enumerate(_ordered_moves(board)):
+        reduce_quiet = (
+            depth >= LMR_MIN_DEPTH
+            and move_index >= LMR_QUIET_INDEX
+            and math.isfinite(alpha)
+            and not in_check
+            and not board.is_capture(move)
+            and move.promotion is None
+            and not board.gives_check(move)
+        )
         board.push(move)
-        score = -_negamax(board, depth - 1, -beta, -alpha)
+        if move_index == 0:
+            score = -_negamax(board, depth - 1, -beta, -alpha)
+        else:
+            probe_depth = depth - 2 if reduce_quiet else depth - 1
+            score = -_negamax(board, probe_depth, -alpha - 1.0, -alpha)
+            if reduce_quiet and score > alpha:
+                score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha)
+            if alpha < score < beta:
+                score = -_negamax(board, depth - 1, -beta, -alpha)
         board.pop()
         if score > best:
             best = score
@@ -153,7 +186,12 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
             break
     if len(_tt) >= TT_LIMIT:
         _tt.clear()
-    _tt[key] = best
+    flag = TT_EXACT
+    if best <= alpha_original:
+        flag = TT_UPPER
+    elif best >= beta_original:
+        flag = TT_LOWER
+    _tt[key] = (best, flag)
     return best
 
 
@@ -161,10 +199,15 @@ def _root_search(board: chess.Board, depth: int, previous: chess.Move) -> chess.
     best_move = previous
     best_score = -math.inf
     alpha = -math.inf
-    for move in _ordered_moves(board, previous):
+    for move_index, move in enumerate(_ordered_moves(board, previous)):
         _check_time()
         board.push(move)
-        score = -_negamax(board, depth - 1, -math.inf, -alpha)
+        if move_index == 0:
+            score = -_negamax(board, depth - 1, -math.inf, math.inf)
+        else:
+            score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha)
+            if score > alpha:
+                score = -_negamax(board, depth - 1, -math.inf, -alpha)
         board.pop()
         if score > best_score:
             best_score = score
