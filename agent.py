@@ -24,6 +24,10 @@ MATE = 1_000_000.0
 SQUARE_FEATURES = 6 * 64
 ENDGAME_OFFSET = SQUARE_FEATURES
 CASTLING_OFFSET = SQUARE_FEATURES * 2
+STRATEGIC_OFFSET = CASTLING_OFFSET + 2
+STRATEGIC_FEATURES = 7
+ACTIVE_STRATEGIC_INDICES = (0, 1, 2, 3, 6)
+STRATEGIC_CACHE_LIMIT = 20_000
 PHASE_VALUES = (0, 0, 1, 1, 2, 4, 0)
 MAX_PHASE = 24
 MAX_DEPTH = 8
@@ -34,10 +38,98 @@ TIME_CHECK_MASK = 63
 _deadline = math.inf
 _nodes = 0
 _tt: dict[tuple[object, int], float] = {}
+_strategic_cache: dict[tuple[int, ...], tuple[float, ...]] = {}
 
 
 class SearchTimeout(Exception):
     """Internal control flow used to return the last completed iteration."""
+
+
+def _passed_mask(colour: chess.Color, square: chess.Square) -> int:
+    direction = 1 if colour == chess.WHITE else -1
+    rank = chess.square_rank(square) + direction
+    file = chess.square_file(square)
+    mask = 0
+    while 0 <= rank < 8:
+        for candidate_file in range(max(0, file - 1), min(8, file + 2)):
+            mask |= chess.BB_SQUARES[chess.square(candidate_file, rank)]
+        rank += direction
+    return mask
+
+
+PASSED_MASKS = {
+    colour: tuple(_passed_mask(colour, square) for square in chess.SQUARES)
+    for colour in chess.COLORS
+}
+
+
+def _strategic_values(board: chess.Board, colour: chess.Color) -> tuple[float, ...]:
+    pawns = board.pieces(chess.PAWN, colour)
+    enemy_pawns = board.pieces(chess.PAWN, not colour)
+    file_counts = [len(pawns & chess.BB_FILES[file]) for file in range(8)]
+    occupied_files = [count > 0 for count in file_counts]
+    passed_pawns = 0
+    isolated_pawns = 0
+    for square in pawns:
+        if not enemy_pawns & PASSED_MASKS[colour][square]:
+            passed_pawns += 1
+        file = chess.square_file(square)
+        left = file > 0 and occupied_files[file - 1]
+        right = file < 7 and occupied_files[file + 1]
+        if not left and not right:
+            isolated_pawns += 1
+    doubled_pawns = sum(max(0, count - 1) for count in file_counts)
+    bishop_pair = int(len(board.pieces(chess.BISHOP, colour)) >= 2)
+
+    king_shield = 0
+    king_square = board.king(colour)
+    if king_square is not None:
+        king_file = chess.square_file(king_square)
+        shield_rank = chess.square_rank(king_square) + (
+            1 if colour == chess.WHITE else -1
+        )
+        if 0 <= shield_rank < 8:
+            for file in range(max(0, king_file - 1), min(8, king_file + 2)):
+                king_shield += int(
+                    bool(pawns & chess.BB_SQUARES[chess.square(file, shield_rank)])
+                )
+    return tuple(
+        float(value)
+        for value in (
+            passed_pawns,
+            isolated_pawns,
+            doubled_pawns,
+            bishop_pair,
+            king_shield,
+        )
+    )
+
+
+def _strategic_difference(board: chess.Board) -> tuple[float, ...]:
+    white = board.occupied_co[chess.WHITE]
+    black = board.occupied_co[chess.BLACK]
+    key = (
+        board.pawns & white,
+        board.pawns & black,
+        board.bishops & white,
+        board.bishops & black,
+        board.kings & white,
+        board.kings & black,
+    )
+    cached = _strategic_cache.get(key)
+    if cached is None:
+        white_values = _strategic_values(board, chess.WHITE)
+        black_values = _strategic_values(board, chess.BLACK)
+        cached = tuple(
+            value - opposing
+            for value, opposing in zip(white_values, black_values, strict=True)
+        )
+        if len(_strategic_cache) >= STRATEGIC_CACHE_LIMIT:
+            _strategic_cache.clear()
+        _strategic_cache[key] = cached
+    if board.turn == chess.WHITE:
+        return cached
+    return tuple(-value for value in cached)
 
 
 def _model_evaluate(board: chess.Board) -> float:
@@ -66,6 +158,14 @@ def _model_evaluate(board: chess.Board) -> float:
         score += WEIGHTS[CASTLING_OFFSET + 1]
     if board.has_queenside_castling_rights(not side):
         score -= WEIGHTS[CASTLING_OFFSET + 1]
+    for feature_index, value in zip(
+        ACTIVE_STRATEGIC_INDICES, _strategic_difference(board), strict=True
+    ):
+        score += value * (
+            blend * WEIGHTS[STRATEGIC_OFFSET + feature_index]
+            + (1.0 - blend)
+            * WEIGHTS[STRATEGIC_OFFSET + STRATEGIC_FEATURES + feature_index]
+        )
     return BIAS + score
 
 
