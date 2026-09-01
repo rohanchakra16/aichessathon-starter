@@ -1,9 +1,9 @@
 """Readable learned-evaluation chess agent for the AI Chessathon.
 
-The shipped model is a compact tapered piece-square evaluator produced by the
-protected offline training pipeline. Its output is the only non-terminal leaf
-evaluation used by the search, so the learned model materially determines move
-selection.
+The shipped model combines the proven tapered piece-square evaluator with a
+small king-aware, two-perspective neural accumulator.  The accumulator scores
+both players' views with shared weights and subtracts them, preserving the
+colour symmetry required by negamax search.
 """
 
 from __future__ import annotations
@@ -14,11 +14,29 @@ import time
 from pathlib import Path
 
 import chess
+import numpy as np
 
 MODEL_PATH = Path(__file__).with_name("weights") / "model.json"
-MODEL = json.loads(MODEL_PATH.read_text())
-WEIGHTS: tuple[float, ...] = tuple(float(value) for value in MODEL["weights"])
-BIAS = float(MODEL["bias"])
+_MODEL = json.loads(MODEL_PATH.read_text())
+_RAW_WEIGHTS = _MODEL["weights"]
+BASE_WEIGHTS = 770
+WEIGHTS: tuple[float, ...] = tuple(float(value) for value in _RAW_WEIGHTS[:BASE_WEIGHTS])
+BIAS = float(_MODEL["bias"])
+NN_HIDDEN = int(_MODEL["layout"]["hidden"])
+NN_FEATURES = (
+    int(_MODEL["layout"]["king_buckets"])
+    * int(_MODEL["layout"]["piece_planes"])
+    * int(_MODEL["layout"]["squares"])
+)
+NN_END = BASE_WEIGHTS + NN_FEATURES * NN_HIDDEN
+NN_EMBEDDING = np.asarray(_RAW_WEIGHTS[BASE_WEIGHTS:NN_END], dtype=np.float32).reshape(
+    NN_FEATURES, NN_HIDDEN
+)
+NN_OUTPUT = np.asarray(_RAW_WEIGHTS[NN_END:], dtype=np.float32)
+NN_SCALE = float(_MODEL["layout"]["output_scale_centipawns"])
+if len(NN_OUTPUT) != NN_HIDDEN:
+    raise ValueError("invalid neural model layout")
+del _MODEL, _RAW_WEIGHTS
 
 MATE = 1_000_000.0
 SQUARE_FEATURES = 6 * 64
@@ -41,11 +59,36 @@ class SearchTimeout(Exception):
 
 
 def _model_evaluate(board: chess.Board) -> float:
-    """Taper the learned piece-square model by remaining material phase."""
+    """Combine tapered piece-square and king-aware neural evaluations."""
     side = board.turn
+    side_king = board.king(side)
+    opponent_king = board.king(not side)
+    if side_king is None or opponent_king is None:
+        return 0.0
+    side_relative_king = (
+        side_king if side == chess.WHITE else chess.square_mirror(side_king)
+    )
+    opponent_relative_king = (
+        opponent_king if side == chess.BLACK else chess.square_mirror(opponent_king)
+    )
+    side_mirror_files = chess.square_file(side_relative_king) >= 4
+    opponent_mirror_files = chess.square_file(opponent_relative_king) >= 4
+    if side_mirror_files:
+        side_relative_king ^= 7
+    if opponent_mirror_files:
+        opponent_relative_king ^= 7
+    side_bucket = chess.square_rank(side_relative_king) * 4 + chess.square_file(
+        side_relative_king
+    )
+    opponent_bucket = chess.square_rank(opponent_relative_king) * 4 + chess.square_file(
+        opponent_relative_king
+    )
+
     midgame = 0.0
     endgame = 0.0
     phase = 0
+    side_indices: list[int] = []
+    opponent_indices: list[int] = []
     for colour, sign in ((side, 1.0), (not side, -1.0)):
         for piece_type in range(chess.PAWN, chess.KING + 1):
             squares = board.pieces(piece_type, colour)
@@ -55,6 +98,24 @@ def _model_evaluate(board: chess.Board) -> float:
                 relative = square if colour == chess.WHITE else chess.square_mirror(square)
                 midgame += sign * WEIGHTS[offset + relative]
                 endgame += sign * WEIGHTS[ENDGAME_OFFSET + offset + relative]
+
+                side_square = square if side == chess.WHITE else chess.square_mirror(square)
+                if side_mirror_files:
+                    side_square ^= 7
+                side_relation = 0 if colour == side else 1
+                side_plane = side_relation * 6 + piece_type - 1
+                side_indices.append((side_bucket * 12 + side_plane) * 64 + side_square)
+
+                opponent_square = (
+                    square if side == chess.BLACK else chess.square_mirror(square)
+                )
+                if opponent_mirror_files:
+                    opponent_square ^= 7
+                opponent_relation = 0 if colour != side else 1
+                opponent_plane = opponent_relation * 6 + piece_type - 1
+                opponent_indices.append(
+                    (opponent_bucket * 12 + opponent_plane) * 64 + opponent_square
+                )
 
     blend = min(1.0, phase / MAX_PHASE)
     score = blend * midgame + (1.0 - blend) * endgame
@@ -66,7 +127,13 @@ def _model_evaluate(board: chess.Board) -> float:
         score += WEIGHTS[CASTLING_OFFSET + 1]
     if board.has_queenside_castling_rights(not side):
         score -= WEIGHTS[CASTLING_OFFSET + 1]
-    return BIAS + score
+    side_accumulator = NN_EMBEDDING[side_indices].sum(axis=0)
+    opponent_accumulator = NN_EMBEDDING[opponent_indices].sum(axis=0)
+    neural = (
+        np.clip(side_accumulator, 0.0, 1.0)
+        - np.clip(opponent_accumulator, 0.0, 1.0)
+    ) @ NN_OUTPUT
+    return BIAS + score + float(neural) * NN_SCALE
 
 
 def _ordered_moves(board: chess.Board, principal: chess.Move | None = None) -> list[chess.Move]:
