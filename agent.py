@@ -28,6 +28,7 @@ PHASE_VALUES = (0, 0, 1, 1, 2, 4, 0)
 MAX_PHASE = 24
 MAX_DEPTH = 8
 QUIESCENCE_DEPTH = 3
+QUIESCENCE_CHECK_EVASIONS = 2
 TT_LIMIT = 50_000
 TIME_CHECK_MASK = 63
 
@@ -90,7 +91,13 @@ def _check_time() -> None:
         raise SearchTimeout
 
 
-def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> float:
+def _quiescence(
+    board: chess.Board,
+    alpha: float,
+    beta: float,
+    depth: int,
+    check_evasions: int = QUIESCENCE_CHECK_EVASIONS,
+) -> float:
     """Resolve short capture sequences before applying the learned evaluator."""
     _check_time()
     outcome = board.outcome(claim_draw=True)
@@ -98,10 +105,9 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
         if outcome.winner is None:
             return 0.0
         return MATE if outcome.winner == board.turn else -MATE
-    if depth == 0:
-        return _model_evaluate(board)
-
     in_check = board.is_check()
+    if depth <= 0 and (not in_check or check_evasions <= 0):
+        return _model_evaluate(board)
     if not in_check:
         stand_pat = _model_evaluate(board)
         if stand_pat >= beta:
@@ -110,14 +116,22 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
 
     moves = _ordered_moves(board)
     if not in_check:
-        moves = [move for move in moves if board.is_capture(move)]
+        moves = [move for move in moves if board.is_capture(move) or move.promotion]
     if not moves:
         return _model_evaluate(board)
 
     best = -math.inf if in_check else alpha
     for move in moves:
         board.push(move)
-        score = -_quiescence(board, -beta, -alpha, depth - 1)
+        next_depth = max(0, depth - 1)
+        next_evasions = check_evasions - (1 if in_check and depth <= 0 else 0)
+        score = -_quiescence(
+            board,
+            -beta,
+            -alpha,
+            next_depth,
+            next_evasions,
+        )
         board.pop()
         best = max(best, score)
         alpha = max(alpha, score)
