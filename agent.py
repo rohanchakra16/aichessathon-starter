@@ -24,6 +24,30 @@ MATE = 1_000_000.0
 SQUARE_FEATURES = 6 * 64
 ENDGAME_OFFSET = SQUARE_FEATURES
 CASTLING_OFFSET = SQUARE_FEATURES * 2
+MIDGAME_TABLE = tuple(
+    tuple(
+        tuple(
+            WEIGHTS[(piece_type - 1) * 64 + (square if colour else square ^ 56)]
+            for square in chess.SQUARES
+        )
+        for piece_type in range(chess.PAWN, chess.KING + 1)
+    )
+    for colour in (chess.BLACK, chess.WHITE)
+)
+ENDGAME_TABLE = tuple(
+    tuple(
+        tuple(
+            WEIGHTS[
+                ENDGAME_OFFSET
+                + (piece_type - 1) * 64
+                + (square if colour else square ^ 56)
+            ]
+            for square in chess.SQUARES
+        )
+        for piece_type in range(chess.PAWN, chess.KING + 1)
+    )
+    for colour in (chess.BLACK, chess.WHITE)
+)
 PHASE_VALUES = (0, 0, 1, 1, 2, 4, 0)
 MAX_PHASE = 24
 MAX_DEPTH = 8
@@ -38,7 +62,7 @@ LMR_QUIET_INDEX = 4
 
 _deadline = math.inf
 _nodes = 0
-_tt: dict[tuple[object, int, int], tuple[float, int]] = {}
+_tt: dict[tuple[object, int, int], tuple[float, int, chess.Move]] = {}
 
 
 class SearchTimeout(Exception):
@@ -50,16 +74,27 @@ def _model_evaluate(board: chess.Board) -> float:
     side = board.turn
     midgame = 0.0
     endgame = 0.0
-    phase = 0
+    piece_sets = (
+        board.pawns,
+        board.knights,
+        board.bishops,
+        board.rooks,
+        board.queens,
+        board.kings,
+    )
+    phase = sum(
+        PHASE_VALUES[piece_type] * chess.popcount(pieces)
+        for piece_type, pieces in enumerate(piece_sets, chess.PAWN)
+    )
     for colour, sign in ((side, 1.0), (not side, -1.0)):
-        for piece_type in range(chess.PAWN, chess.KING + 1):
-            squares = board.pieces(piece_type, colour)
-            phase += PHASE_VALUES[piece_type] * len(squares)
-            offset = (piece_type - 1) * 64
-            for square in squares:
-                relative = square if colour == chess.WHITE else chess.square_mirror(square)
-                midgame += sign * WEIGHTS[offset + relative]
-                endgame += sign * WEIGHTS[ENDGAME_OFFSET + offset + relative]
+        occupied = board.occupied_co[colour]
+        for piece_type, pieces in enumerate(piece_sets, chess.PAWN):
+            squares = pieces & occupied
+            midgame_weights = MIDGAME_TABLE[colour][piece_type - 1]
+            endgame_weights = ENDGAME_TABLE[colour][piece_type - 1]
+            for square in chess.scan_reversed(squares):
+                midgame += sign * midgame_weights[square]
+                endgame += sign * endgame_weights[square]
 
     blend = min(1.0, phase / MAX_PHASE)
     score = blend * midgame + (1.0 - blend) * endgame
@@ -143,10 +178,12 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
 
     alpha_original = alpha
     beta_original = beta
-    key = (board._transposition_key(), board.halfmove_clock, depth)
+    position_key = board._transposition_key()
+    key = (position_key, board.halfmove_clock, depth)
+    principal: chess.Move | None = None
     cached = _tt.get(key)
     if cached is not None:
-        cached_score, flag = cached
+        cached_score, flag, principal = cached
         if flag == TT_EXACT:
             return cached_score
         if flag == TT_LOWER:
@@ -155,9 +192,14 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
             beta = min(beta, cached_score)
         if alpha >= beta:
             return cached_score
+    else:
+        shallower = _tt.get((position_key, board.halfmove_clock, depth - 1))
+        if shallower is not None:
+            principal = shallower[2]
     best = -math.inf
+    best_move: chess.Move | None = None
     in_check = board.is_check()
-    for move_index, move in enumerate(_ordered_moves(board)):
+    for move_index, move in enumerate(_ordered_moves(board, principal)):
         reduce_quiet = (
             depth >= LMR_MIN_DEPTH
             and move_index >= LMR_QUIET_INDEX
@@ -180,6 +222,7 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
         board.pop()
         if score > best:
             best = score
+            best_move = move
         if score > alpha:
             alpha = score
         if alpha >= beta:
@@ -191,7 +234,9 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
         flag = TT_UPPER
     elif best >= beta_original:
         flag = TT_LOWER
-    _tt[key] = (best, flag)
+    if best_move is None:
+        raise RuntimeError("non-terminal search node had no best move")
+    _tt[key] = (best, flag, best_move)
     return best
 
 
