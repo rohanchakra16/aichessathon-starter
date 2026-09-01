@@ -48,3 +48,9 @@ in the fast arena, where its result was inconclusive. Its first exact-clock
 sample is promising but too small for promotion. It is retained as exploratory
 evidence only; any promotion decision must use the subsequently declared,
 disjoint prospective real-clock gate.
+
+The prospective gate then ran on eight different confirmation openings and
+accepted the candidate: 8 wins, 6 draws, 2 losses; 68.75%; interval
+54.264%–80.312%; zero failures. Its retained report is
+`exp-0032-prospective-real-clock.json`. The controller promoted the candidate
+without counting the exploratory sample toward the decision.
