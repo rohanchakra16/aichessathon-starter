@@ -165,6 +165,9 @@ def train(
 ) -> tuple[np.ndarray, dict[str, float | int | list[int]]]:
     active_positions = [chess.Board(row["fen"]) for row in active_rows]
     active_labels = np.asarray([float(row["label"]) for row in active_rows])
+    label_clip = float(base_model["training"]["label_clip_centipawns"])
+    base_labels = np.clip(base_labels, -label_clip, label_clip)
+    active_labels = np.clip(active_labels, -label_clip, label_clip)
     training_games, validation_games = split_game_ids(active_rows)
     active_training = np.asarray(
         [int(row["game_id"]) in training_games for row in active_rows], dtype=bool
@@ -230,6 +233,7 @@ def model_payload(
             "split": "complete game ids; no position-level leakage",
             "split_seed": ACTIVE_SPLIT_SEED,
             "ridge_penalty": args.ridge_penalty,
+            "label_clip_centipawns": base_model["training"]["label_clip_centipawns"],
             "coefficient_prior": STRATEGIC_PRIOR.tolist(),
             "coefficient_bounds": [list(bound) for bound in STRATEGIC_BOUNDS],
             "base_model_sha256": file_sha256(args.base_model),
