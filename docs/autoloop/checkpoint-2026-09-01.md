@@ -12,8 +12,8 @@ controller or GitHub Actions, and `.autoloop/state.json` has
 
 - Champion commit: `fb86594855baaa4a02c83facfc95b2fba885f833`
 - Champion source experiment: `exp-0032`
-- Last completed experiment: `exp-0035`
-- Next experiment number: 36
+- Last completed formal experiment: `exp-0037`
+- Next formal experiment number: 38
 - Evaluated main commit: `c4d4ea1ab3e99e47ed2c23ae204bf3065c591219`
 - Deterministic ZIP SHA-256:
   `91c007cf232433f95dcb4285c3a8df58abc3cb29fa407bd355bdfeedda57c675`
@@ -113,7 +113,7 @@ Additional held-out objectives were rejected before arena dispatch:
 These variants were not promoted or presented as formal chess improvements.
 Their scripts and tests are retained so they are not rediscovered and repeated.
 
-## Stop condition reached for the current direction
+## Stop condition reached for the previous residual direction
 
 The engine-guided/self-play PSQT-plus-small-strategic-residual and learned
 ordering direction now has:
@@ -135,6 +135,67 @@ small incrementally updated/NNUE-style evaluator) or a redesigned search with
 proper bound-aware transposition storage and selective pruning developed and
 benchmarked together. Neither should be mixed into the current champion without
 new protected experiments.
+
+## Compact NNUE-style evaluator direction
+
+The next protected direction implemented a compact king-aware,
+two-perspective neural accumulator on top of the champion's frozen 770-weight
+tapered evaluator. The network is evaluated locally with NumPy, has eight
+hidden units, remains well within the 50 MB package limit, and uses no runtime
+engine or network access.
+
+Formal results against the unchanged `exp-0032` champion:
+
+| Experiment | Change | W-D-L | Score | 90% interval | Decision |
+| --- | --- | ---: | ---: | ---: | --- |
+| 36 | 50% neural-residual blend, four training epochs | 15-35-14 | 50.78125% | 43.57%–57.96% | inconclusive |
+| 37 | same network at a 75% residual blend | 12-31-21 | 42.96875% | 35.99%–50.24% | inconclusive |
+
+Both candidates passed the complete constrained CI gate. Experiment 36's
+package was 1,974,365 compressed bytes and 5,317,531 expanded bytes, imported
+in 0.365 seconds, peaked at 236,101,632 bytes, and completed the real-clock
+stress move in 2.006 seconds. Model ablation changed all 32 sampled moves.
+
+Several additional variants were rejected before formal dispatch:
+
+- Doubling the hidden width to 16 doubled model size for only about 0.4% RMSE
+  improvement and no held-out ranking gain.
+- A high-fidelity-only dataset labelled at 5,000 Stockfish nodes improved
+  static validation metrics but scored 1-3-4 (31.25%) in paired play.
+- A public recent-master corpus was added as an offline training source. The
+  reproducible source is TWIC 1660 (31 August 2026), containing 9,139 games;
+  6,000 positions from 2,001 complete game groups were relabelled by
+  Stockfish 18 at 5,000 nodes. The archive SHA-256 is
+  `f46e172fa2ed5fe53cc465e44f3c8f321685d123006e32b6f531b95dafffc263`
+  and the labelled dataset digest is
+  `c8ca12507f59fa32366cbd122f19e9825a1d6fc9554f70c84c0c7a960cfc57a1`.
+  Games, rather than individual positions, are assigned wholly to training or
+  validation, preventing position leakage.
+- The eight-epoch hybrid self-play plus master-position model improved both
+  active and historical label RMSE but scored 0-11-5 (31.25%) in a 16-game
+  paired pre-screen. It is retained on
+  `research/nnue-hybrid-e8-offline-rejected`.
+- The less-fitted six-epoch hybrid scored 2-9-5 (40.625%): 2-4-2 on held-out
+  active positions and 0-5-3 on held-out master positions. It is retained on
+  `research/nnue-hybrid-e6-offline-rejected`.
+
+The master games are therefore useful position coverage, not direct move
+imitation. Stockfish supplies the labels, while actual paired games remain the
+promotion authority.
+
+## Stop condition reached for compact NNUE leaf evaluation
+
+The tested family now covers conservative, medium, and full residual strength;
+two network widths; ordinary and high-fidelity engine labels; self-play-only
+and master-position hybrid corpora; and both static held-out and actual-play
+screens. The sequence contains two formal non-promotions plus three offline
+playing failures, while the protected champion remains unchanged.
+
+Static prediction quality consistently failed to translate into stronger
+shallow-search play. Further changes to epochs, blend percentages, or nearby
+network sizes are no longer well motivated. Any subsequent experiment should
+change the search architecture or training objective materially rather than
+continue tuning this leaf evaluator.
 
 ## What is autonomous and what still needs approval
 
