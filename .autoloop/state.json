@@ -1,14 +1,8 @@
 {
-  "champion_commit": "fb86594855baaa4a02c83facfc95b2fba885f833",
+  "champion_commit": "b4cf1218af343df146af3ae6fec93ede5fdcf798",
   "last_completed_experiment": "exp-0038",
   "live_submission": null,
   "next_experiment": 39,
   "schema_version": 1,
-  "submission_candidate": {
-    "artifact_sha256": "91c007cf232433f95dcb4285c3a8df58abc3cb29fa407bd355bdfeedda57c675",
-    "champion_commit": "fb86594855baaa4a02c83facfc95b2fba885f833",
-    "evaluated_main_commit": "c4d4ea1ab3e99e47ed2c23ae204bf3065c591219",
-    "release_record": "releases/c4d4ea1ab3e9-33479569865.json",
-    "validated_at": "2026-09-01T06:56:28.837645+00:00"
-  }
+  "submission_candidate": null
 }
