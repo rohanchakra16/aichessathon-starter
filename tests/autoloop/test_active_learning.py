@@ -12,6 +12,14 @@ from training.generate_active_learning_dataset import (
     rows_from_contexts,
     select_contexts,
 )
+from training.train_active_move_ordering import (
+    CAPTURE_OFFSET,
+    move_between,
+    move_features,
+)
+from training.train_active_move_ordering import (
+    FEATURES as ORDERING_FEATURES,
+)
 from training.train_active_residual_evaluator import (
     STRATEGIC_BOUNDS,
     STRATEGIC_FEATURE_NAMES,
@@ -136,3 +144,20 @@ def test_pairwise_samples_target_alternative_minus_best_margin() -> None:
     assert baseline_margins.tolist() == [5.0, 15.0]
     assert residual.tolist() == [25.0, 45.0]
     assert games.tolist() == [3, 3]
+
+
+def test_move_ordering_recovers_child_move_and_fixed_features() -> None:
+    parent = chess.Board()
+    child = parent.copy(stack=False)
+    child.push_uci("e2e4")
+    move = move_between(parent.fen(), child.fen())
+    vector = move_features(parent, move)
+    assert move.uci() == "e2e4"
+    assert vector.shape == (ORDERING_FEATURES,)
+    assert vector.sum() == 2.0
+
+
+def test_move_ordering_marks_captures() -> None:
+    board = chess.Board("4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1")
+    vector = move_features(board, chess.Move.from_uci("e4d5"))
+    assert vector[CAPTURE_OFFSET] == 1.0
