@@ -49,9 +49,7 @@ def test_protected_paths_are_not_candidate_editable() -> None:
 
 
 def test_decision_requires_compliance_before_strength() -> None:
-    status, _ = controller.decide(
-        {"passed": False}, {"passed": True, "score": 1.0}, policy()
-    )
+    status, _ = controller.decide({"passed": False}, {"passed": True, "score": 1.0}, policy())
     assert status == "rejected"
 
 
@@ -125,6 +123,22 @@ def test_upload_boundary_is_disabled() -> None:
     assert policy()["competition_upload_enabled"] is False
 
 
+def test_accepted_candidate_invalidates_previous_release_artifact() -> None:
+    state = {
+        "next_experiment": 40,
+        "submission_candidate": {"champion_commit": "old"},
+    }
+    with (
+        patch("controller.git"),
+        patch("controller.atomic_json"),
+    ):
+        controller.persist("exp-0040", {}, state, "accepted", "new")
+    assert state["champion_commit"] == "new"
+    assert state["submission_candidate"] is None
+    assert state["last_completed_experiment"] == "exp-0040"
+    assert state["next_experiment"] == 41
+
+
 def test_workflow_queries_are_pinned_to_user_fork() -> None:
     assert policy()["github_repository"] == "rohanchakra16/aichessathon-starter"
 
@@ -151,9 +165,7 @@ def test_frozen_openings_are_legal_and_paired() -> None:
 def test_confirmation_openings_are_independent_legal_and_paired() -> None:
     current = policy()
     promotion = controller.load(controller.ROOT / current["arena"]["openings_file"])
-    confirmation = controller.load(
-        controller.ROOT / current["confirmation_arena"]["openings_file"]
-    )
+    confirmation = controller.load(controller.ROOT / current["confirmation_arena"]["openings_file"])
     promotion_sequences = {tuple(item["moves"]) for item in promotion["openings"]}
     confirmation_sequences = {tuple(item["moves"]) for item in confirmation["openings"]}
     assert len(confirmation_sequences) == 32
@@ -163,9 +175,7 @@ def test_confirmation_openings_are_independent_legal_and_paired() -> None:
         2 * current["real_clock_confirmation"]["maximum_openings"]
     )
     prospective = current["prospective_real_clock_arena"]
-    assert prospective["opening_offset"] == current["real_clock_confirmation"][
-        "maximum_openings"
-    ]
+    assert prospective["opening_offset"] == current["real_clock_confirmation"]["maximum_openings"]
     assert prospective["games"] == 2 * prospective["maximum_openings"]
     exploratory_sequences = {
         tuple(item["moves"])

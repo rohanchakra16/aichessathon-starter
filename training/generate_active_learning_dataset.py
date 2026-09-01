@@ -168,18 +168,12 @@ def select_contexts(
     remaining_count = count - len(coverage)
     active_count = remaining_count // 2
     ordered = sorted(
-        [
-            item
-            for item in contexts
-            if (item["game_id"], item["ply"]) not in coverage_keys
-        ],
+        [item for item in contexts if (item["game_id"], item["ply"]) not in coverage_keys],
         key=lambda item: (-float(item["regret"]), int(item["game_id"]), int(item["ply"])),
     )
     active = ordered[:active_count]
     active_keys = coverage_keys | {(item["game_id"], item["ply"]) for item in active}
-    exploration = [
-        item for item in contexts if (item["game_id"], item["ply"]) not in active_keys
-    ]
+    exploration = [item for item in contexts if (item["game_id"], item["ply"]) not in active_keys]
     rng.shuffle(exploration)
     selected = coverage + active + exploration[: count - len(coverage) - active_count]
     return sorted(selected, key=lambda item: (int(item["game_id"]), int(item["ply"])))
@@ -252,20 +246,24 @@ def main() -> None:
     parser.add_argument("--label-nodes", type=int, default=2500)
     parser.add_argument("--multipv", type=int, default=3)
     parser.add_argument("--selected-contexts", type=int, default=512)
+    parser.add_argument("--seed", type=int, default=ACTIVE_SEED)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--progress-every", type=int, default=8)
     args = parser.parse_args()
-    if min(
-        args.games,
-        args.opening_plies,
-        args.maximum_plies,
-        args.champion_time_left_ms,
-        args.sample_stride,
-        args.opening_nodes,
-        args.label_nodes,
-        args.multipv,
-        args.selected_contexts,
-    ) < 1:
+    if (
+        min(
+            args.games,
+            args.opening_plies,
+            args.maximum_plies,
+            args.champion_time_left_ms,
+            args.sample_stride,
+            args.opening_nodes,
+            args.label_nodes,
+            args.multipv,
+            args.selected_contexts,
+        )
+        < 1
+    ):
         parser.error("all numeric settings must be positive")
     if args.opening_plies >= args.maximum_plies:
         parser.error("opening plies must be less than maximum plies")
@@ -274,7 +272,7 @@ def main() -> None:
         parser.error("Stockfish is required for offline labels; pass --engine")
     engine_path = Path(discovered).resolve()
     champion_root = args.champion_root.resolve()
-    rng = random.Random(ACTIVE_SEED)
+    rng = random.Random(args.seed)
     contexts: list[dict[str, Any]] = []
     with chess.engine.SimpleEngine.popen_uci(str(engine_path)) as engine:
         engine.configure({"Threads": 1, "Hash": 64})
@@ -307,7 +305,7 @@ def main() -> None:
     payload = {
         "schema_version": 1,
         "kind": "champion_disagreement_active_learning_dataset",
-        "seed": ACTIVE_SEED,
+        "seed": args.seed,
         "games": args.games,
         "opening_plies": args.opening_plies,
         "maximum_plies": args.maximum_plies,

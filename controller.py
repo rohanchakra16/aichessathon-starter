@@ -363,9 +363,7 @@ def release_check() -> bool:
     return bool(evaluation.get("passed"))
 
 
-def arena(
-    worktree: Path, policy: dict[str, Any], experiment_id: str
-) -> dict[str, Any]:
+def arena(worktree: Path, policy: dict[str, Any], experiment_id: str) -> dict[str, Any]:
     settings = policy["arena"]
     environment = os.environ.copy()
     environment.pop("CODEX_API_KEY", None)
@@ -401,9 +399,7 @@ def arena(
     return load(output)
 
 
-def decide(
-    ci: dict[str, Any], match: dict[str, Any], policy: dict[str, Any]
-) -> tuple[str, str]:
+def decide(ci: dict[str, Any], match: dict[str, Any], policy: dict[str, Any]) -> tuple[str, str]:
     if not ci.get("passed"):
         return "rejected", "protected compliance/correctness evaluation failed"
     if not match.get("passed"):
@@ -560,6 +556,7 @@ def persist(
     if status == "accepted" and candidate_sha is not None:
         git("merge", "--ff-only", candidate_sha)
         state["champion_commit"] = candidate_sha
+        state["submission_candidate"] = None
     state["last_completed_experiment"] = experiment_id
     state["next_experiment"] += 1
     record["status"] = status
