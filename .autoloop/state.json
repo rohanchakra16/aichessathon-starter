@@ -4,5 +4,11 @@
   "live_submission": null,
   "next_experiment": 39,
   "schema_version": 1,
-  "submission_candidate": null
+  "submission_candidate": {
+    "artifact_sha256": "1f63db64f090e010497b236f7cf8ed7c560eb2f20006694770a5bf1763dda121",
+    "champion_commit": "b4cf1218af343df146af3ae6fec93ede5fdcf798",
+    "evaluated_main_commit": "e6c0e6d10189f57f63037759e90e4b1f9a3f2edc",
+    "release_record": "releases/e6c0e6d10189-33540401350.json",
+    "validated_at": "2026-09-01T17:56:34.044586+00:00"
+  }
 }
