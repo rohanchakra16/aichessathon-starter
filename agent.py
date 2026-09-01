@@ -24,6 +24,10 @@ MATE = 1_000_000.0
 SQUARE_FEATURES = 6 * 64
 ENDGAME_OFFSET = SQUARE_FEATURES
 CASTLING_OFFSET = SQUARE_FEATURES * 2
+STRATEGIC_OFFSET = CASTLING_OFFSET + 2
+STRATEGIC_FEATURES = 7
+ACTIVE_STRATEGIC_INDICES = (1, 2, 3, 4, 5)
+STRATEGIC_CACHE_LIMIT = 20_000
 PHASE_VALUES = (0, 0, 1, 1, 2, 4, 0)
 MAX_PHASE = 24
 MAX_DEPTH = 8
@@ -34,10 +38,72 @@ TIME_CHECK_MASK = 63
 _deadline = math.inf
 _nodes = 0
 _tt: dict[tuple[object, int], float] = {}
+_strategic_cache: dict[tuple[int, ...], tuple[float, ...]] = {}
 
 
 class SearchTimeout(Exception):
     """Internal control flow used to return the last completed iteration."""
+
+
+def _strategic_values(board: chess.Board, colour: chess.Color) -> tuple[float, ...]:
+    pawns = board.pieces(chess.PAWN, colour)
+    file_counts = [len(pawns & chess.BB_FILES[file]) for file in range(8)]
+    occupied_files = [count > 0 for count in file_counts]
+    isolated_pawns = 0
+    for square in pawns:
+        file = chess.square_file(square)
+        left = file > 0 and occupied_files[file - 1]
+        right = file < 7 and occupied_files[file + 1]
+        if not left and not right:
+            isolated_pawns += 1
+    doubled_pawns = sum(max(0, count - 1) for count in file_counts)
+    bishop_pair = int(len(board.pieces(chess.BISHOP, colour)) >= 2)
+
+    open_files = 0
+    semi_open_files = 0
+    for square in board.pieces(chess.ROOK, colour):
+        file_mask = chess.BB_FILES[chess.square_file(square)]
+        if not board.pawns & file_mask:
+            open_files += 1
+        elif not pawns & file_mask:
+            semi_open_files += 1
+    return tuple(
+        float(value)
+        for value in (
+            isolated_pawns,
+            doubled_pawns,
+            bishop_pair,
+            open_files,
+            semi_open_files,
+        )
+    )
+
+
+def _strategic_difference(board: chess.Board) -> tuple[float, ...]:
+    white = board.occupied_co[chess.WHITE]
+    black = board.occupied_co[chess.BLACK]
+    key = (
+        board.pawns & white,
+        board.pawns & black,
+        board.bishops & white,
+        board.bishops & black,
+        board.rooks & white,
+        board.rooks & black,
+    )
+    cached = _strategic_cache.get(key)
+    if cached is None:
+        white_values = _strategic_values(board, chess.WHITE)
+        black_values = _strategic_values(board, chess.BLACK)
+        cached = tuple(
+            value - opposing
+            for value, opposing in zip(white_values, black_values, strict=True)
+        )
+        if len(_strategic_cache) >= STRATEGIC_CACHE_LIMIT:
+            _strategic_cache.clear()
+        _strategic_cache[key] = cached
+    if board.turn == chess.WHITE:
+        return cached
+    return tuple(-value for value in cached)
 
 
 def _model_evaluate(board: chess.Board) -> float:
@@ -66,6 +132,14 @@ def _model_evaluate(board: chess.Board) -> float:
         score += WEIGHTS[CASTLING_OFFSET + 1]
     if board.has_queenside_castling_rights(not side):
         score -= WEIGHTS[CASTLING_OFFSET + 1]
+    for feature_index, value in zip(
+        ACTIVE_STRATEGIC_INDICES, _strategic_difference(board), strict=True
+    ):
+        score += value * (
+            blend * WEIGHTS[STRATEGIC_OFFSET + feature_index]
+            + (1.0 - blend)
+            * WEIGHTS[STRATEGIC_OFFSET + STRATEGIC_FEATURES + feature_index]
+        )
     return BIAS + score
 
 
