@@ -20,6 +20,13 @@ from training.train_active_move_ordering import (
 from training.train_active_move_ordering import (
     FEATURES as ORDERING_FEATURES,
 )
+from training.train_active_psqt_finetune import (
+    fit_delta as fit_psqt_delta,
+)
+from training.train_active_psqt_finetune import (
+    game_folds,
+    ranking_totals,
+)
 from training.train_active_residual_evaluator import (
     STRATEGIC_BOUNDS,
     STRATEGIC_FEATURE_NAMES,
@@ -32,10 +39,7 @@ from training.train_active_residual_evaluator import (
 
 
 def test_active_selection_mixes_high_regret_and_reproducible_exploration() -> None:
-    contexts = [
-        {"game_id": index % 5, "ply": index, "regret": float(index)}
-        for index in range(20)
-    ]
+    contexts = [{"game_id": index % 5, "ply": index, "regret": float(index)} for index in range(20)]
     first = select_contexts(contexts, 12, random.Random(ACTIVE_SEED))
     second = select_contexts(contexts, 12, random.Random(ACTIVE_SEED))
     assert first == second
@@ -161,3 +165,37 @@ def test_move_ordering_marks_captures() -> None:
     board = chess.Board("4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1")
     vector = move_features(board, chess.Move.from_uci("e4d5"))
     assert vector[CAPTURE_OFFSET] == 1.0
+
+
+def test_psqt_game_folds_are_complete_disjoint_and_deterministic() -> None:
+    rows = [{"game_id": game_id} for game_id in range(10) for _ in range(2)]
+    first = game_folds(rows, 5)
+    second = game_folds(rows, 5)
+    assert first == second
+    assert set().union(*first) == set(range(10))
+    assert sum(len(fold) for fold in first) == 10
+
+
+def test_psqt_delta_fit_uses_base_anchor_and_active_weight() -> None:
+    base_design = np.asarray([[1.0, 0.0], [1.0, 1.0]])
+    base_residual = np.asarray([0.0, 0.0])
+    active_design = np.asarray([[1.0, 1.0]])
+    active_residual = np.asarray([30.0])
+    weak = fit_psqt_delta(base_design, base_residual, active_design, active_residual, 10.0, 1.0)
+    strong = fit_psqt_delta(base_design, base_residual, active_design, active_residual, 10.0, 4.0)
+    assert np.linalg.norm(strong) > np.linalg.norm(weak)
+    assert np.all(np.isfinite(strong))
+
+
+def test_psqt_ranking_metrics_choose_lowest_child_score() -> None:
+    rows = [
+        {"game_id": 1, "parent_ply": 8, "source": "teacher_child_1"},
+        {"game_id": 1, "parent_ply": 8, "source": "teacher_child_2"},
+        {"game_id": 1, "parent_ply": 8, "source": "champion_child"},
+    ]
+    labels = np.asarray([-50.0, 0.0, 25.0])
+    prediction = np.asarray([10.0, -20.0, 30.0])
+    count, top_one, reciprocal = ranking_totals(rows, labels, prediction, np.ones(3, dtype=bool))
+    assert count == 1
+    assert top_one == 0
+    assert reciprocal == 0.5
