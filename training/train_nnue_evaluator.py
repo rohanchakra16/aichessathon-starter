@@ -36,6 +36,7 @@ from training.train_stockfish_evaluator import (  # noqa: E402
 )
 
 SEED = 2026090103
+BASE_SPLIT_SEED = 2026090105
 BASE_WEIGHTS = 770
 KING_BUCKETS = 32
 PIECE_PLANES = 12
@@ -109,6 +110,7 @@ def load_base_dataset(path: Path) -> Dataset:
     allowed_kinds = {
         "engine_guided_selfplay_evaluation_dataset",
         "high_fidelity_relabelled_selfplay_evaluation_dataset",
+        "historical_master_engine_labelled_dataset",
     }
     if payload.get("kind") not in allowed_kinds:
         raise ValueError("base dataset has the wrong kind")
@@ -124,10 +126,52 @@ def load_base_dataset(path: Path) -> Dataset:
     return Dataset(
         positions=positions,
         labels=labels,
-        game_ids=np.full(len(rows), -1, dtype=np.int32),
-        sources=["base"] * len(rows),
-        parent_plies=np.full(len(rows), -1, dtype=np.int32),
+        game_ids=np.asarray([int(row.get("game_id", -1)) for row in rows], dtype=np.int32),
+        sources=[str(row.get("source", "base")) for row in rows],
+        parent_plies=np.asarray(
+            [int(row.get("ply", -1)) for row in rows], dtype=np.int32
+        ),
     )
+
+
+def combine_base_datasets(datasets: list[Dataset]) -> Dataset:
+    if not datasets:
+        raise ValueError("at least one base dataset is required")
+    positions: list[chess.Board] = []
+    labels: list[float] = []
+    game_ids: list[int] = []
+    sources: list[str] = []
+    parent_plies: list[int] = []
+    next_game_id = 0
+    for dataset in datasets:
+        local_ids = sorted({int(game_id) for game_id in dataset.game_ids if game_id >= 0})
+        mapping = {game_id: next_game_id + offset for offset, game_id in enumerate(local_ids)}
+        next_game_id += len(local_ids)
+        positions.extend(dataset.positions)
+        labels.extend(float(label) for label in dataset.labels)
+        game_ids.extend(mapping.get(int(game_id), -1) for game_id in dataset.game_ids)
+        sources.extend(dataset.sources)
+        parent_plies.extend(int(ply) for ply in dataset.parent_plies)
+    return Dataset(
+        positions=positions,
+        labels=np.asarray(labels, dtype=np.float64),
+        game_ids=np.asarray(game_ids, dtype=np.int32),
+        sources=sources,
+        parent_plies=np.asarray(parent_plies, dtype=np.int32),
+    )
+
+
+def split_base_game_ids(game_ids: np.ndarray) -> tuple[set[int], set[int]]:
+    grouped = sorted({int(game_id) for game_id in game_ids if game_id >= 0})
+    if not grouped:
+        return set(), set()
+    if len(grouped) < 5:
+        raise ValueError("game-grouped base data needs at least five games")
+    rng = np.random.default_rng(BASE_SPLIT_SEED)
+    shuffled = list(rng.permutation(grouped))
+    validation_count = max(1, len(shuffled) // 5)
+    validation = {int(game_id) for game_id in shuffled[:validation_count]}
+    return set(grouped) - validation, validation
 
 
 def load_active_dataset(path: Path) -> tuple[Dataset, dict[str, Any]]:
@@ -330,6 +374,15 @@ def train(
     label_clip: float,
     residual_blend: float,
 ) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
+    base_training_games, base_validation_games = split_base_game_ids(base.game_ids)
+    base_training = np.asarray(
+        [
+            int(game_id) < 0 or int(game_id) in base_training_games
+            for game_id in base.game_ids
+        ],
+        dtype=bool,
+    )
+    base_validation = ~base_training
     training_games, validation_games = split_game_ids(
         [
             {"game_id": int(game_id)}
@@ -339,16 +392,20 @@ def train(
     active_training = np.asarray(
         [int(game_id) in training_games for game_id in active.game_ids], dtype=bool
     )
-    training_positions = base.positions + [
+    training_positions = [
+        board for board, selected in zip(base.positions, base_training, strict=True) if selected
+    ] + [
         board for board, selected in zip(active.positions, active_training, strict=True) if selected
     ]
-    training_labels = np.concatenate((base.labels, active.labels[active_training]))
+    training_labels = np.concatenate(
+        (base.labels[base_training], active.labels[active_training])
+    )
     training_labels = np.clip(training_labels, -label_clip, label_clip)
     training_baseline = baseline_prediction(training_positions, base_model)
     training_targets = training_labels - training_baseline
     sample_weights = np.concatenate(
         (
-            np.ones(len(base.positions), dtype=np.float32),
+            np.ones(int(base_training.sum()), dtype=np.float32),
             np.full(int(active_training.sum()), active_weight, dtype=np.float32),
         )
     )
@@ -378,6 +435,10 @@ def train(
     neural_ranking = ranking_metrics(active, active_prediction, validation_games)
     metrics: dict[str, Any] = {
         "base_examples": len(base.positions),
+        "base_training_examples": int(base_training.sum()),
+        "base_validation_examples": int(base_validation.sum()),
+        "base_training_game_ids": sorted(base_training_games),
+        "base_validation_game_ids": sorted(base_validation_games),
         "active_training_examples": int(active_training.sum()),
         "active_validation_examples": int(validation.sum()),
         "active_training_game_ids": sorted(training_games),
@@ -396,6 +457,26 @@ def train(
         "active_validation_nnue_ranking": neural_ranking,
         "training_loss_by_epoch": losses,
     }
+    if base_validation.any():
+        base_own, base_opponent, base_mask = sparse_batch(base.positions)
+        base_baseline = baseline_prediction(base.positions, base_model)
+        base_residual = neural_residual(
+            base_own,
+            base_opponent,
+            base_mask,
+            embedding,
+            output,
+            output_scale,
+        )
+        base_prediction = base_baseline + residual_blend * base_residual
+        metrics["base_validation_baseline_rmse"] = root_mean_square_error(
+            np.clip(base.labels[base_validation], -label_clip, label_clip),
+            base_baseline[base_validation],
+        )
+        metrics["base_validation_nnue_rmse"] = root_mean_square_error(
+            np.clip(base.labels[base_validation], -label_clip, label_clip),
+            base_prediction[base_validation],
+        )
     return embedding[:-1], output, metrics
 
 
@@ -405,7 +486,7 @@ def model_payload(
     output: np.ndarray,
     metrics: dict[str, Any],
     args: argparse.Namespace,
-    base_metadata: dict[str, Any],
+    base_metadata: list[dict[str, Any]],
     active_metadata: dict[str, Any],
 ) -> dict[str, Any]:
     script = Path(__file__)
@@ -444,7 +525,14 @@ def model_payload(
             "script_sha256": hashlib.sha256(script.read_bytes()).hexdigest(),
             "external_engine_used": True,
             "teacher_name": "Stockfish 18",
-            "base_dataset_sha256": base_metadata["dataset_sha256"],
+            "base_datasets": [
+                {
+                    "kind": metadata["kind"],
+                    "examples": len(metadata["rows"]),
+                    "dataset_sha256": metadata["dataset_sha256"],
+                }
+                for metadata in base_metadata
+            ],
             "active_dataset_sha256": active_metadata["dataset_sha256"],
             "protected_opening_list_used": False,
         },
@@ -456,7 +544,7 @@ def model_payload(
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--base-dataset", type=Path, required=True)
+    parser.add_argument("--base-dataset", type=Path, action="append", required=True)
     parser.add_argument("--active-dataset", type=Path, required=True)
     parser.add_argument("--base-model", type=Path, default=Path("weights/model.json"))
     parser.add_argument("--output", type=Path, required=True)
@@ -477,8 +565,8 @@ def main() -> None:
     if not 0.0 < args.residual_blend <= 1.0:
         parser.error("residual blend must be in (0, 1]")
 
-    base_payload = json.loads(args.base_dataset.read_text())
-    base = load_base_dataset(args.base_dataset)
+    base_payloads = [json.loads(path.read_text()) for path in args.base_dataset]
+    base = combine_base_datasets([load_base_dataset(path) for path in args.base_dataset])
     active, verified_active_payload = load_active_dataset(args.active_dataset)
     base_model = json.loads(args.base_model.read_text())
     embedding, output, metrics = train(
@@ -501,7 +589,7 @@ def main() -> None:
         output,
         metrics,
         args,
-        base_payload,
+        base_payloads,
         verified_active_payload,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)

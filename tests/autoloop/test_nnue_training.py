@@ -7,11 +7,14 @@ import numpy as np
 from training.train_nnue_evaluator import (
     PADDING_INDEX,
     SPARSE_FEATURES,
+    Dataset,
+    combine_base_datasets,
     fit,
     load_base_dataset,
     neural_residual,
     perspective_indices,
     sparse_batch,
+    split_base_game_ids,
 )
 from training.train_selfplay_evaluator import dataset_digest
 
@@ -108,3 +111,26 @@ def test_high_fidelity_base_cache_is_verified(tmp_path: Path) -> None:
         assert "digest mismatch" in str(error)
     else:
         raise AssertionError("corrupted high-fidelity cache was accepted")
+
+
+def test_grouped_base_split_namespaces_games_without_leakage() -> None:
+    positions = [chess.Board() for _ in range(6)]
+    first = Dataset(
+        positions=positions[:3],
+        labels=np.asarray([0.0, 1.0, 2.0]),
+        game_ids=np.asarray([0, 1, -1], dtype=np.int32),
+        sources=["historical"] * 3,
+        parent_plies=np.asarray([10, 20, -1], dtype=np.int32),
+    )
+    second = Dataset(
+        positions=positions[3:],
+        labels=np.asarray([3.0, 4.0, 5.0]),
+        game_ids=np.asarray([0, 1, 2], dtype=np.int32),
+        sources=["historical"] * 3,
+        parent_plies=np.asarray([30, 40, 50], dtype=np.int32),
+    )
+    combined = combine_base_datasets([first, second])
+    assert combined.game_ids.tolist() == [0, 1, -1, 2, 3, 4]
+    training, validation = split_base_game_ids(combined.game_ids)
+    assert training.isdisjoint(validation)
+    assert training | validation == {0, 1, 2, 3, 4}
