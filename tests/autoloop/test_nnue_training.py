@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import chess
 import numpy as np
 
@@ -5,10 +8,12 @@ from training.train_nnue_evaluator import (
     PADDING_INDEX,
     SPARSE_FEATURES,
     fit,
+    load_base_dataset,
     neural_residual,
     perspective_indices,
     sparse_batch,
 )
+from training.train_selfplay_evaluator import dataset_digest
 
 
 def test_sparse_encoding_is_deterministic_and_perspective_specific() -> None:
@@ -74,3 +79,32 @@ def test_small_fit_is_reproducible_and_reduces_residual_error() -> None:
     assert losses == second_losses
     assert np.array_equal(first_embedding, second_embedding)
     assert np.array_equal(first_output, second_output)
+
+
+def test_high_fidelity_base_cache_is_verified(tmp_path: Path) -> None:
+    positions = [chess.Board(), chess.Board("4k3/8/8/8/8/8/8/4K3 w - - 0 1")]
+    labels = np.asarray([15.0, 0.0])
+    payload = {
+        "schema_version": 1,
+        "kind": "high_fidelity_relabelled_selfplay_evaluation_dataset",
+        "protected_opening_list_used": False,
+        "dataset_sha256": dataset_digest(positions, labels),
+        "rows": [
+            {"fen": board.fen(), "label": float(label)}
+            for board, label in zip(positions, labels, strict=True)
+        ],
+    }
+    path = tmp_path / "high-fidelity.json"
+    path.write_text(json.dumps(payload))
+    loaded = load_base_dataset(path)
+    assert [board.fen() for board in loaded.positions] == [board.fen() for board in positions]
+    assert np.array_equal(loaded.labels, labels)
+
+    payload["rows"][0]["label"] = 16.0
+    path.write_text(json.dumps(payload))
+    try:
+        load_base_dataset(path)
+    except ValueError as error:
+        assert "digest mismatch" in str(error)
+    else:
+        raise AssertionError("corrupted high-fidelity cache was accepted")

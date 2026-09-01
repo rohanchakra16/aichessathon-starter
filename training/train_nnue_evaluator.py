@@ -28,6 +28,9 @@ from training.generate_active_learning_dataset import (  # noqa: E402
     dataset_digest as active_dataset_digest,
 )
 from training.train_active_residual_evaluator import split_game_ids  # noqa: E402
+from training.train_selfplay_evaluator import (  # noqa: E402
+    dataset_digest as selfplay_dataset_digest,
+)
 from training.train_stockfish_evaluator import (  # noqa: E402
     features as piece_square_features,
 )
@@ -103,16 +106,24 @@ def baseline_prediction(positions: list[chess.Board], model: dict[str, Any]) -> 
 
 def load_base_dataset(path: Path) -> Dataset:
     payload = json.loads(path.read_text())
-    if payload.get("kind") != "engine_guided_selfplay_evaluation_dataset":
+    allowed_kinds = {
+        "engine_guided_selfplay_evaluation_dataset",
+        "high_fidelity_relabelled_selfplay_evaluation_dataset",
+    }
+    if payload.get("kind") not in allowed_kinds:
         raise ValueError("base dataset has the wrong kind")
     if payload.get("protected_opening_list_used") is not False:
         raise ValueError("base dataset provenance is not independent")
     rows = payload.get("rows", [])
     if not rows:
         raise ValueError("base dataset is empty")
+    positions = [chess.Board(row["fen"]) for row in rows]
+    labels = np.asarray([float(row["label"]) for row in rows], dtype=np.float64)
+    if selfplay_dataset_digest(positions, labels) != payload.get("dataset_sha256"):
+        raise ValueError("base dataset digest mismatch")
     return Dataset(
-        positions=[chess.Board(row["fen"]) for row in rows],
-        labels=np.asarray([float(row["label"]) for row in rows], dtype=np.float64),
+        positions=positions,
+        labels=labels,
         game_ids=np.full(len(rows), -1, dtype=np.int32),
         sources=["base"] * len(rows),
         parent_plies=np.full(len(rows), -1, dtype=np.int32),
