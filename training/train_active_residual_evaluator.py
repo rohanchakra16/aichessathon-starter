@@ -156,6 +156,49 @@ def fit_residual(
     return np.clip(coefficients, lower, upper)
 
 
+def pairwise_samples(
+    rows: list[dict[str, Any]],
+    design: np.ndarray,
+    labels: np.ndarray,
+    baseline: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Build alternative-minus-best margins, grouped by their source game."""
+    groups: dict[tuple[int, int], list[int]] = {}
+    for index, row in enumerate(rows):
+        if row["source"] != "parent":
+            groups.setdefault((int(row["game_id"]), int(row["parent_ply"])), []).append(
+                index
+            )
+    pair_design: list[np.ndarray] = []
+    residual_margins: list[float] = []
+    game_ids: list[int] = []
+    target_margins: list[float] = []
+    baseline_margins: list[float] = []
+    for (game_id, _), indices in sorted(groups.items()):
+        if len(indices) < 2:
+            continue
+        best = min(indices, key=lambda index: (labels[index], index))
+        for alternative in indices:
+            target_margin = float(labels[alternative] - labels[best])
+            if alternative == best or target_margin <= 0.0:
+                continue
+            baseline_margin = float(baseline[alternative] - baseline[best])
+            pair_design.append(design[alternative] - design[best])
+            residual_margins.append(target_margin - baseline_margin)
+            game_ids.append(game_id)
+            target_margins.append(target_margin)
+            baseline_margins.append(baseline_margin)
+    if not pair_design:
+        raise ValueError("active dataset produced no non-tied child pairs")
+    return (
+        np.vstack(pair_design),
+        np.asarray(residual_margins),
+        np.asarray(game_ids),
+        np.asarray(target_margins),
+        np.asarray(baseline_margins),
+    )
+
+
 def train(
     base_positions: list[chess.Board],
     base_labels: np.ndarray,
@@ -163,6 +206,7 @@ def train(
     base_model: dict[str, Any],
     penalty: float,
     active_weight: float,
+    objective: str,
 ) -> tuple[np.ndarray, dict[str, float | int | list[int]]]:
     active_positions = [chess.Board(row["fen"]) for row in active_rows]
     active_labels = np.asarray([float(row["label"]) for row in active_rows])
@@ -170,11 +214,6 @@ def train(
     base_labels = np.clip(base_labels, -label_clip, label_clip)
     active_labels = np.clip(active_labels, -label_clip, label_clip)
     training_games, validation_games = split_game_ids(active_rows)
-    active_training = np.asarray(
-        [int(row["game_id"]) in training_games for row in active_rows], dtype=bool
-    )
-    active_validation = ~active_training
-
     base_design = np.vstack([strategic_features(board) for board in base_positions])
     active_design = np.vstack([strategic_features(board) for board in active_positions])
     base_baseline = baseline_prediction(base_positions, base_model)
@@ -182,16 +221,40 @@ def train(
     active_baseline = baseline_prediction(active_positions, base_model)
     active_residual = active_labels - active_baseline
     active_scale = np.sqrt(active_weight)
-    fit_design = np.vstack(
-        (base_design, active_design[active_training] * active_scale)
-    )
-    fit_labels = np.concatenate(
-        (base_residual, active_residual[active_training] * active_scale)
-    )
+    if objective == "pointwise":
+        active_training = np.asarray(
+            [int(row["game_id"]) in training_games for row in active_rows], dtype=bool
+        )
+        active_validation = ~active_training
+        fit_design = np.vstack(
+            (base_design, active_design[active_training] * active_scale)
+        )
+        fit_labels = np.concatenate(
+            (base_residual, active_residual[active_training] * active_scale)
+        )
+    elif objective == "pairwise":
+        (
+            margin_design,
+            margin_residual,
+            margin_games,
+            target_margins,
+            baseline_margins,
+        ) = pairwise_samples(active_rows, active_design, active_labels, active_baseline)
+        active_training = np.asarray(
+            [int(game_id) in training_games for game_id in margin_games], dtype=bool
+        )
+        active_validation = ~active_training
+        fit_design = np.vstack(
+            (base_design, margin_design[active_training] * active_scale)
+        )
+        fit_labels = np.concatenate(
+            (base_residual, margin_residual[active_training] * active_scale)
+        )
+    else:
+        raise ValueError(f"unknown active objective: {objective}")
     coefficients = fit_residual(fit_design, fit_labels, penalty)
 
     base_prediction = base_baseline + base_design @ coefficients
-    active_prediction = active_baseline + active_design @ coefficients
     metrics: dict[str, float | int | list[int]] = {
         "base_training_examples": len(base_positions),
         "active_training_examples": int(active_training.sum()),
@@ -202,16 +265,43 @@ def train(
             base_labels, base_baseline
         ),
         "base_training_rmse": root_mean_square_error(base_labels, base_prediction),
-        "active_training_rmse": root_mean_square_error(
-            active_labels[active_training], active_prediction[active_training]
-        ),
-        "active_validation_rmse": root_mean_square_error(
-            active_labels[active_validation], active_prediction[active_validation]
-        ),
-        "active_baseline_validation_rmse": root_mean_square_error(
-            active_labels[active_validation], active_baseline[active_validation]
-        ),
     }
+    if objective == "pointwise":
+        active_prediction = active_baseline + active_design @ coefficients
+        metrics.update(
+            {
+                "active_training_rmse": root_mean_square_error(
+                    active_labels[active_training], active_prediction[active_training]
+                ),
+                "active_validation_rmse": root_mean_square_error(
+                    active_labels[active_validation], active_prediction[active_validation]
+                ),
+                "active_baseline_validation_rmse": root_mean_square_error(
+                    active_labels[active_validation], active_baseline[active_validation]
+                ),
+            }
+        )
+    else:
+        predicted_margins = baseline_margins + margin_design @ coefficients
+        metrics.update(
+            {
+                "active_training_margin_rmse": root_mean_square_error(
+                    target_margins[active_training], predicted_margins[active_training]
+                ),
+                "active_validation_margin_rmse": root_mean_square_error(
+                    target_margins[active_validation], predicted_margins[active_validation]
+                ),
+                "active_baseline_validation_margin_rmse": root_mean_square_error(
+                    target_margins[active_validation], baseline_margins[active_validation]
+                ),
+                "active_validation_ranking_accuracy": float(
+                    np.mean(predicted_margins[active_validation] > 0.0)
+                ),
+                "active_baseline_validation_ranking_accuracy": float(
+                    np.mean(baseline_margins[active_validation] > 0.0)
+                ),
+            }
+        )
     return coefficients, metrics
 
 
@@ -240,6 +330,7 @@ def model_payload(
             "split_seed": ACTIVE_SPLIT_SEED,
             "ridge_penalty": args.ridge_penalty,
             "active_example_weight": args.active_weight,
+            "active_objective": args.objective,
             "label_clip_centipawns": base_model["training"]["label_clip_centipawns"],
             "coefficient_prior": STRATEGIC_PRIOR.tolist(),
             "coefficient_bounds": [list(bound) for bound in STRATEGIC_BOUNDS],
@@ -268,6 +359,7 @@ def main() -> None:
     parser.add_argument("--active-dataset", type=Path, required=True)
     parser.add_argument("--ridge-penalty", type=float, default=100.0)
     parser.add_argument("--active-weight", type=float, default=1.0)
+    parser.add_argument("--objective", choices=("pointwise", "pairwise"), default="pointwise")
     parser.add_argument("--output", type=Path, default=Path("weights/model.json"))
     args = parser.parse_args()
     if args.ridge_penalty < 0 or args.active_weight <= 0:
@@ -282,6 +374,7 @@ def main() -> None:
         base_model,
         args.ridge_penalty,
         args.active_weight,
+        args.objective,
     )
     payload = model_payload(
         base_model, coefficients, metrics, args, active_metadata, base_metadata

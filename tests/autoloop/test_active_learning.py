@@ -17,6 +17,7 @@ from training.train_active_residual_evaluator import (
     STRATEGIC_FEATURE_NAMES,
     fit_residual,
     load_active_dataset,
+    pairwise_samples,
     split_game_ids,
     strategic_features,
 )
@@ -116,3 +117,22 @@ def test_residual_fit_respects_chess_valid_bounds() -> None:
     coefficients = fit_residual(design, labels, 1.0)
     for coefficient, (lower, upper) in zip(coefficients, STRATEGIC_BOUNDS, strict=True):
         assert lower <= coefficient <= upper
+
+
+def test_pairwise_samples_target_alternative_minus_best_margin() -> None:
+    rows = [
+        {"game_id": 3, "parent_ply": 12, "source": "teacher_child_1"},
+        {"game_id": 3, "parent_ply": 12, "source": "teacher_child_2"},
+        {"game_id": 3, "parent_ply": 12, "source": "champion_child"},
+    ]
+    design = np.asarray([[1.0, 0.0], [3.0, 1.0], [5.0, 2.0]])
+    labels = np.asarray([-40.0, -10.0, 20.0])
+    baseline = np.asarray([-20.0, -15.0, -5.0])
+    pair_design, residual, games, targets, baseline_margins = pairwise_samples(
+        rows, design, labels, baseline
+    )
+    assert pair_design.tolist() == [[2.0, 1.0], [4.0, 2.0]]
+    assert targets.tolist() == [30.0, 60.0]
+    assert baseline_margins.tolist() == [5.0, 15.0]
+    assert residual.tolist() == [25.0, 45.0]
+    assert games.tolist() == [3, 3]
