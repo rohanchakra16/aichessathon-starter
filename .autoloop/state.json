@@ -1,7 +1,16 @@
 {
   "champion_commit": "ec2269b3fd767766bb9b554b0bceb387142f8da3",
   "last_completed_experiment": "exp-0040",
-  "live_submission": null,
+  "live_submission": {
+    "artifact_sha256": "e5b660f7c06fa264f71524a770e6396e7d6cda8eff283b44a9bc00bd1544e8a8",
+    "champion_commit": "ec2269b3fd767766bb9b554b0bceb387142f8da3",
+    "platform": "AI Chessathon",
+    "record": "submissions/aichessathon-v1-e5b660f7c06f.json",
+    "status": "active",
+    "team": "Phantom",
+    "validated_at": "2026-09-01T23:30:40Z",
+    "version": 1
+  },
   "next_experiment": 41,
   "schema_version": 1,
   "submission_candidate": {
