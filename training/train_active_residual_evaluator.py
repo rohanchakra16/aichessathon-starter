@@ -162,6 +162,7 @@ def train(
     active_rows: list[dict[str, Any]],
     base_model: dict[str, Any],
     penalty: float,
+    active_weight: float,
 ) -> tuple[np.ndarray, dict[str, float | int | list[int]]]:
     active_positions = [chess.Board(row["fen"]) for row in active_rows]
     active_labels = np.asarray([float(row["label"]) for row in active_rows])
@@ -180,8 +181,13 @@ def train(
     base_residual = base_labels - base_baseline
     active_baseline = baseline_prediction(active_positions, base_model)
     active_residual = active_labels - active_baseline
-    fit_design = np.vstack((base_design, active_design[active_training]))
-    fit_labels = np.concatenate((base_residual, active_residual[active_training]))
+    active_scale = np.sqrt(active_weight)
+    fit_design = np.vstack(
+        (base_design, active_design[active_training] * active_scale)
+    )
+    fit_labels = np.concatenate(
+        (base_residual, active_residual[active_training] * active_scale)
+    )
     coefficients = fit_residual(fit_design, fit_labels, penalty)
 
     base_prediction = base_baseline + base_design @ coefficients
@@ -233,6 +239,7 @@ def model_payload(
             "split": "complete game ids; no position-level leakage",
             "split_seed": ACTIVE_SPLIT_SEED,
             "ridge_penalty": args.ridge_penalty,
+            "active_example_weight": args.active_weight,
             "label_clip_centipawns": base_model["training"]["label_clip_centipawns"],
             "coefficient_prior": STRATEGIC_PRIOR.tolist(),
             "coefficient_bounds": [list(bound) for bound in STRATEGIC_BOUNDS],
@@ -260,10 +267,11 @@ def main() -> None:
     parser.add_argument("--base-dataset", type=Path, required=True)
     parser.add_argument("--active-dataset", type=Path, required=True)
     parser.add_argument("--ridge-penalty", type=float, default=100.0)
+    parser.add_argument("--active-weight", type=float, default=1.0)
     parser.add_argument("--output", type=Path, default=Path("weights/model.json"))
     args = parser.parse_args()
-    if args.ridge_penalty < 0:
-        parser.error("ridge penalty must be non-negative")
+    if args.ridge_penalty < 0 or args.active_weight <= 0:
+        parser.error("ridge penalty must be non-negative and active weight positive")
     base_model = json.loads(args.base_model.read_text())
     base_positions, base_labels, base_metadata = load_base_dataset(args.base_dataset)
     active_rows, active_metadata = load_active_dataset(args.active_dataset)
@@ -273,6 +281,7 @@ def main() -> None:
         active_rows,
         base_model,
         args.ridge_penalty,
+        args.active_weight,
     )
     payload = model_payload(
         base_model, coefficients, metrics, args, active_metadata, base_metadata
