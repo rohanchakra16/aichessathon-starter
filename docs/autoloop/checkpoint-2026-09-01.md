@@ -10,26 +10,26 @@ controller or GitHub Actions, and `.autoloop/state.json` has
 
 ## Current champion and internal release artifact
 
-- Champion commit: `fb86594855baaa4a02c83facfc95b2fba885f833`
-- Champion source experiment: `exp-0032`
-- Last completed formal experiment: `exp-0037`
-- Next formal experiment number: 38
-- Evaluated main commit: `c4d4ea1ab3e99e47ed2c23ae204bf3065c591219`
+- Champion commit: `b4cf1218af343df146af3ae6fec93ede5fdcf798`
+- Champion source experiment: `exp-0038`
+- Last completed formal experiment: `exp-0038`
+- Next formal experiment number: 39
+- Evaluated main commit: `e6c0e6d10189f57f63037759e90e4b1f9a3f2edc`
 - Deterministic ZIP SHA-256:
-  `91c007cf232433f95dcb4285c3a8df58abc3cb29fa407bd355bdfeedda57c675`
-- ZIP size: 11,022 compressed bytes; 35,384 expanded bytes
+  `1f63db64f090e010497b236f7cf8ed7c560eb2f20006694770a5bf1763dda121`
+- ZIP size: 11,368 compressed bytes; 36,970 expanded bytes
 - Members: `agent.py`, `weights/model.json`
-- Release record: `releases/c4d4ea1ab3e9-33479569865.json`
+- Release record: `releases/e6c0e6d10189-33540401350.json`
 - Release run:
-  <https://github.com/rohanchakra16/aichessathon-starter/actions/runs/33479569865>
+  <https://github.com/rohanchakra16/aichessathon-starter/actions/runs/33540401350>
 
 Release evidence:
 
 - Linux constrained evaluation passed on one CPU, 2 GB memory, no network,
   read-only source, and a 256 MB writable `/tmp`.
-- Peak memory: 120,127,488 bytes.
-- Import: 0.217 seconds.
-- Maximum 120-second stress move: 2.004 seconds under the protected 2.25-second
+- Peak memory: 120,156,160 bytes.
+- Import: 0.220 seconds.
+- Maximum 120-second stress move: 2.002 seconds under the protected 2.25-second
   real-clock ceiling.
 - Short-clock stress cases retained the 0.75-second ceiling and all passed.
 - Model ablation changed 30 of 32 opening moves.
@@ -196,6 +196,48 @@ shallow-search play. Further changes to epochs, blend percentages, or nearby
 network sizes are no longer well motivated. Any subsequent experiment should
 change the search architecture or training objective materially rather than
 continue tuning this leaf evaluator.
+
+## Selective-search promotion
+
+Experiment 38 replaced the unsafe exact-score transposition cache with
+bound-aware entries, added principal-variation probes, and conservatively
+reduced only late quiet moves. Checks, captures, promotions, early ordered
+moves, and improving reduced probes retain a full-depth search.
+
+The unchanged fast arena scored 15 wins, 26 draws, and 23 losses (43.75%),
+with a 90% interval of 36.74%–51.02%. That result was inconclusive and did not
+promote the candidate. The change was independently screened at longer clocks,
+where it scored 2-1-1, then entered the frozen prospective real-clock gate
+that had been committed before its games were observed.
+
+Prospective competition-clock result against `exp-0032`:
+
+- 7 wins, 8 draws, and 1 loss;
+- 68.75% score;
+- 90% interval 54.264%–80.312%;
+- decision: accept;
+- zero candidate or incumbent failures;
+- duration: 2,030.116 seconds.
+
+The controller automatically cherry-picked the candidate as the new champion
+at `b4cf1218af343df146af3ae6fec93ede5fdcf798`, updated state, and pushed the
+evidence. The subsequent release gate also passed, including the constrained
+Linux environment, package, static checks, model ablation, short-clock stress,
+and two exact 120 s + 0.5 s games won by checkmate with opposite colours.
+
+Focused follow-ups did not improve on the promoted combination:
+
+- exact PVS without late-move reductions scored 2-8-6 (37.5%) in an
+  independent fast pre-screen;
+- extending check evasions at the quiescence boundary scored 3-8-5 (43.75%);
+- transposition best-move ordering plus exactly equivalent evaluator
+  optimisations reduced fixed-depth runtime by 43%–59%, but scored 2-3-3
+  (43.75%) across two independent longer-clock screens.
+
+These results show that nominally deeper search is not automatically stronger
+with the current value model. The promoted PVS/LMR combination remains
+protected; the next training cycle should use its own trajectories rather than
+continue isolated depth and ordering changes.
 
 ## What is autonomous and what still needs approval
 
