@@ -317,6 +317,7 @@ def train(
     l2_penalty: float,
     active_weight: float,
     label_clip: float,
+    residual_blend: float,
 ) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
     training_games, validation_games = split_game_ids(
         [
@@ -360,7 +361,7 @@ def train(
     active_residual = neural_residual(
         active_own, active_opponent, active_mask, embedding, output, output_scale
     )
-    active_prediction = active_baseline + active_residual
+    active_prediction = active_baseline + residual_blend * active_residual
     validation = ~active_training
     baseline_ranking = ranking_metrics(active, active_baseline, validation_games)
     neural_ranking = ranking_metrics(active, active_prediction, validation_games)
@@ -416,7 +417,7 @@ def model_payload(
             "hidden": args.hidden,
             "activation": "clipped_relu_0_1",
             "two_perspective_difference": True,
-            "output_scale_centipawns": args.output_scale,
+            "output_scale_centipawns": args.output_scale * args.residual_blend,
         },
         "training": {
             "method": "fixed champion skip connection plus compact king-aware neural residual",
@@ -426,6 +427,7 @@ def model_payload(
             "learning_rate": args.learning_rate,
             "l2_penalty": args.l2_penalty,
             "active_weight": args.active_weight,
+            "residual_blend": args.residual_blend,
             "label_clip_centipawns": args.label_clip,
             "script": str(script.relative_to(Path.cwd())),
             "script_sha256": hashlib.sha256(script.read_bytes()).hexdigest(),
@@ -454,12 +456,15 @@ def main() -> None:
     parser.add_argument("--output-scale", type=float, default=400.0)
     parser.add_argument("--l2-penalty", type=float, default=1e-6)
     parser.add_argument("--active-weight", type=float, default=4.0)
+    parser.add_argument("--residual-blend", type=float, default=1.0)
     parser.add_argument("--label-clip", type=float, default=1500.0)
     args = parser.parse_args()
     if args.hidden < 1 or args.epochs < 1 or args.batch_size < 1:
         parser.error("hidden, epochs, and batch size must be positive")
     if args.learning_rate <= 0 or args.output_scale <= 0 or args.active_weight <= 0:
         parser.error("learning rate, output scale, and active weight must be positive")
+    if not 0.0 < args.residual_blend <= 1.0:
+        parser.error("residual blend must be in (0, 1]")
 
     base_payload = json.loads(args.base_dataset.read_text())
     base = load_base_dataset(args.base_dataset)
@@ -477,6 +482,7 @@ def main() -> None:
         args.l2_penalty,
         args.active_weight,
         args.label_clip,
+        args.residual_blend,
     )
     payload = model_payload(
         base_model,
