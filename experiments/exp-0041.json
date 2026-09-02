@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "id": "exp-0041",
+  "branch": "autoloop/candidate-0041",
+  "candidate_commit": "dde6b0a2862394909183e2c1546ab4a7b05310b0",
+  "champion_commit": "ec2269b3fd767766bb9b554b0bceb387142f8da3",
+  "started_at": "2026-09-02T13:53:41Z",
+  "completed_at": "2026-09-02T14:00:22Z",
+  "status": "rejected",
+  "generator": "stockfish-hard-position-psqt-finetune",
+  "decision_reason": "held-out static metrics improved, but complete-search teacher alignment regressed at both tested budgets",
+  "protected_hash": "0355ae8b9bf3e51026cbe7eb0cbfda93fa12dab3361a233112c0e0c2df097f7e",
+  "training": {
+    "dataset_sha256": "37708959ecf7e64abecce9de89e990cc23dc49dcea45da9aabebbb11c26b90f0",
+    "opponent_elo": 1600,
+    "real_clock_games": 8,
+    "real_clock_score": 0.25,
+    "sampled_contexts": 143,
+    "label_nodes": 20000,
+    "multipv": 5,
+    "ridge_penalty": 10000.0,
+    "active_example_weight": 1.0,
+    "cross_validation": {
+      "baseline_rmse": 474.7097410556739,
+      "candidate_rmse": 469.1069336463941,
+      "baseline_top1": 0.2937062937062937,
+      "candidate_top1": 0.3006993006993007,
+      "baseline_mrr": 0.5195804195804196,
+      "candidate_mrr": 0.5230769230769231
+    },
+    "coefficient_delta_l2": 31.49254259611317,
+    "coefficient_delta_max": 7.9150468181349165
+  },
+  "offline_search_screens": [
+    {
+      "time_left_ms": 3000,
+      "positions": 143,
+      "champion_top1": 0.2937062937062937,
+      "candidate_top1": 0.2867132867132867,
+      "champion_top3": 0.5174825174825175,
+      "candidate_top3": 0.4965034965034965,
+      "failures": 0
+    },
+    {
+      "time_left_ms": 10000,
+      "positions": 32,
+      "selection": "highest teacher regret",
+      "champion_top1": 0.1875,
+      "candidate_top1": 0.125,
+      "champion_top3": 0.3125,
+      "candidate_top3": 0.28125,
+      "failures": 0
+    }
+  ],
+  "ci": {
+    "skipped": true,
+    "reason": "candidate failed the prospective complete-search teacher-alignment screen"
+  },
+  "arena": {
+    "skipped": true,
+    "reason": "offline rejection prevented unnecessary game expenditure"
+  }
+}
