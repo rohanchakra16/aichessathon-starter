@@ -115,7 +115,7 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
 
     moves = _ordered_moves(board)
     if not in_check:
-        moves = [move for move in moves if board.is_capture(move)]
+        moves = [move for move in moves if board.is_capture(move) or move.promotion is not None]
     if not moves:
         return _model_evaluate(board)
 
