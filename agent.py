@@ -38,7 +38,7 @@ LMR_QUIET_INDEX = 4
 
 _deadline = math.inf
 _nodes = 0
-_tt: dict[tuple[object, int, int], tuple[float, int]] = {}
+_tt: dict[tuple[object, int], tuple[float, int, int]] = {}
 
 
 class SearchTimeout(Exception):
@@ -143,18 +143,19 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
 
     alpha_original = alpha
     beta_original = beta
-    key = (board._transposition_key(), board.halfmove_clock, depth)
+    key = (board._transposition_key(), board.halfmove_clock)
     cached = _tt.get(key)
     if cached is not None:
-        cached_score, flag = cached
-        if flag == TT_EXACT:
-            return cached_score
-        if flag == TT_LOWER:
-            alpha = max(alpha, cached_score)
-        else:
-            beta = min(beta, cached_score)
-        if alpha >= beta:
-            return cached_score
+        cached_score, flag, cached_depth = cached
+        if cached_depth >= depth:
+            if flag == TT_EXACT:
+                return cached_score
+            if flag == TT_LOWER:
+                alpha = max(alpha, cached_score)
+            else:
+                beta = min(beta, cached_score)
+            if alpha >= beta:
+                return cached_score
     best = -math.inf
     in_check = board.is_check()
     for move_index, move in enumerate(_ordered_moves(board)):
@@ -184,14 +185,16 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
             alpha = score
         if alpha >= beta:
             break
-    if len(_tt) >= TT_LIMIT:
+    if len(_tt) >= TT_LIMIT and key not in _tt:
         _tt.clear()
     flag = TT_EXACT
     if best <= alpha_original:
         flag = TT_UPPER
     elif best >= beta_original:
         flag = TT_LOWER
-    _tt[key] = (best, flag)
+    previous = _tt.get(key)
+    if previous is None or depth >= previous[2]:
+        _tt[key] = (best, flag, depth)
     return best
 
 
