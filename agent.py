@@ -39,6 +39,7 @@ LMR_QUIET_INDEX = 4
 _deadline = math.inf
 _nodes = 0
 _tt: dict[tuple[object, int, int], tuple[float, int]] = {}
+_history: dict[tuple[bool, int, int], int] = {}
 
 
 class SearchTimeout(Exception):
@@ -75,13 +76,17 @@ def _model_evaluate(board: chess.Board) -> float:
 
 
 def _ordered_moves(board: chess.Board, principal: chess.Move | None = None) -> list[chess.Move]:
-    def priority(move: chess.Move) -> tuple[int, int, int, str]:
+    turn = board.turn
+    history = _history
+
+    def priority(move: chess.Move) -> tuple[int, int, int, int, str]:
         victim = board.piece_type_at(move.to_square) or 0
         attacker = board.piece_type_at(move.from_square) or 0
         return (
             1 if move == principal else 0,
             1 if move.promotion else 0,
             victim * 10 - attacker,
+            history.get((turn, move.from_square, move.to_square), 0),
             move.uci(),
         )
 
@@ -158,13 +163,13 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
     best = -math.inf
     in_check = board.is_check()
     for move_index, move in enumerate(_ordered_moves(board)):
+        is_quiet = move.promotion is None and not board.is_capture(move)
         reduce_quiet = (
             depth >= LMR_MIN_DEPTH
             and move_index >= LMR_QUIET_INDEX
             and math.isfinite(alpha)
             and not in_check
-            and not board.is_capture(move)
-            and move.promotion is None
+            and is_quiet
             and not board.gives_check(move)
         )
         board.push(move)
@@ -183,6 +188,9 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
         if score > alpha:
             alpha = score
         if alpha >= beta:
+            if is_quiet:
+                slot = (board.turn, move.from_square, move.to_square)
+                _history[slot] = _history.get(slot, 0) + depth * depth
             break
     if len(_tt) >= TT_LIMIT:
         _tt.clear()
@@ -239,6 +247,7 @@ def get_move(fen: str, time_left_ms: int) -> str:
 
     _deadline = time.monotonic() + budget
     _nodes = 0
+    _history.clear()
     for depth in range(1, MAX_DEPTH + 1):
         try:
             completed = _root_search(board, depth, best)
