@@ -108,6 +108,8 @@ def _least_valuable_recapture(
 
 def _static_exchange(board: chess.Board, move: chess.Move) -> int:
     """Estimate a capture's material result along legal least-value recaptures."""
+    if time.monotonic() >= _deadline:
+        raise SearchTimeout
     gains = [_capture_gain(board, move)]
     target = move.to_square
     pushed = 0
@@ -115,6 +117,8 @@ def _static_exchange(board: chess.Board, move: chess.Move) -> int:
         board.push(move)
         pushed += 1
         while True:
+            if time.monotonic() >= _deadline:
+                raise SearchTimeout
             recapture = _least_valuable_recapture(board, target)
             if recapture is None:
                 break
