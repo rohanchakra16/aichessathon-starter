@@ -45,6 +45,16 @@ class SearchTimeout(Exception):
     """Internal control flow used to return the last completed iteration."""
 
 
+def _outcome_score(board: chess.Board, outcome: chess.Outcome) -> float:
+    """Score mates by distance so wins are hastened and losses delayed."""
+    if outcome.winner is None:
+        return 0.0
+    distance_adjustment = float(board.ply())
+    if outcome.winner == board.turn:
+        return MATE - distance_adjustment
+    return -MATE + distance_adjustment
+
+
 def _model_evaluate(board: chess.Board) -> float:
     """Taper the learned piece-square model by remaining material phase."""
     side = board.turn
@@ -100,9 +110,7 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
     _check_time()
     outcome = board.outcome(claim_draw=True)
     if outcome is not None:
-        if outcome.winner is None:
-            return 0.0
-        return MATE if outcome.winner == board.turn else -MATE
+        return _outcome_score(board, outcome)
     if depth == 0:
         return _model_evaluate(board)
 
@@ -135,9 +143,7 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
     _check_time()
     outcome = board.outcome(claim_draw=True)
     if outcome is not None:
-        if outcome.winner is None:
-            return 0.0
-        return MATE if outcome.winner == board.turn else -MATE
+        return _outcome_score(board, outcome)
     if depth == 0:
         return _quiescence(board, alpha, beta, QUIESCENCE_DEPTH)
 
