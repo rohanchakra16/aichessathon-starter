@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Persistent deterministic controller for internal Chessathon experiments.
 
-Codex proposes candidate submission changes. This controller alone owns path
-protection, evaluation, promotion, journaling, and the no-upload boundary.
+AI generators propose candidate submission changes. This controller alone owns
+generator scheduling, path protection, evaluation, promotion, journaling, and
+the no-upload boundary.
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ ROOT = Path(__file__).resolve().parent
 POLICY_PATH = ROOT / ".autoloop/protected/policy.json"
 STATE_PATH = ROOT / ".autoloop/state.json"
 WORKTREES = ROOT / ".autoloop/worktrees"
+NON_IMPROVEMENT_STATUSES = frozenset({"rejected", "inconclusive"})
 
 
 class InfrastructureError(RuntimeError):
@@ -117,22 +119,100 @@ def status_paths(worktree: Path) -> list[str]:
     return paths
 
 
-def generate_candidate(
-    worktree: Path, experiment_id: str, policy: dict[str, Any]
-) -> dict[str, str]:
-    prompt = f"""You are proposing {experiment_id} for the AI Chessathon internal optimizer.
-Read AGENTS.md and the protected policy. Make one focused strength or reliability
-improvement to the submission. You may edit only agent.py or files under
-weights/. Do not edit the harness, tests, workflow, controller,
-acceptance criteria, experiment state, training code, or documentation.
-Review the retained experiment journals and candidate history first; do not
-repeat a change that has already been tested.
+def recent_experiment_records(
+    state: dict[str, Any], limit: int
+) -> list[dict[str, Any]]:
+    """Load a bounded newest-first evidence window for generator coordination."""
+    next_number = int(state["next_experiment"])
+    records: list[dict[str, Any]] = []
+    for number in range(next_number - 1, max(0, next_number - limit - 1), -1):
+        path = ROOT / f"experiments/exp-{number:04d}.json"
+        if path.exists():
+            records.append(load(path))
+    return records
+
+
+def consecutive_non_improvements(records: list[dict[str, Any]]) -> int:
+    """Count consecutive scientific non-improvements, ignoring no evidence."""
+    count = 0
+    for record in records:
+        status = record.get("status")
+        if status in NON_IMPROVEMENT_STATUSES:
+            count += 1
+            continue
+        if status == "infrastructure_error":
+            continue
+        break
+    return count
+
+
+def generator_for_stall_count(count: int, policy: dict[str, Any]) -> str:
+    """Choose the secondary generator at a frozen, deterministic cadence."""
+    settings = policy["candidate_generators"]
+    threshold = int(settings["secondary_after_non_improvements"])
+    cadence = int(settings["secondary_cadence"])
+    if count >= threshold and (count - threshold) % cadence == 0:
+        return str(settings["secondary"])
+    return str(settings["primary"])
+
+
+def select_candidate_generator(
+    state: dict[str, Any], policy: dict[str, Any]
+) -> tuple[str, list[dict[str, Any]]]:
+    """Return the scheduled generator and its bounded evidence window."""
+    limit = int(policy["candidate_generators"]["recent_experiment_limit"])
+    records = recent_experiment_records(state, limit)
+    stalled = consecutive_non_improvements(records)
+    return generator_for_stall_count(stalled, policy), records
+
+
+def experiment_digest(records: list[dict[str, Any]]) -> str:
+    """Render concise evidence rather than repeatedly feeding full raw journals."""
+    if not records:
+        return "- No retained experiment summaries are available."
+    lines: list[str] = []
+    for record in records:
+        identifier = str(record.get("id", "unknown"))
+        status = str(record.get("status", "unknown"))
+        generator = str(record.get("generator", "unknown"))
+        reason = str(record.get("decision_reason", record.get("failure", "no reason")))
+        reason = " ".join(reason.split())[:360]
+        lines.append(f"- {identifier}: {status}; {generator}; {reason}")
+    return "\n".join(lines)
+
+
+def candidate_prompt(
+    worktree: Path,
+    experiment_id: str,
+    generator: str,
+    records: list[dict[str, Any]],
+) -> str:
+    champion = git("rev-parse", "HEAD", cwd=worktree)
+    return f"""You are the {generator} candidate engineer for {experiment_id} in the
+AI Chessathon internal optimizer. The frozen champion is {champion}.
+
+Read AGENTS.md, agent.py, weights/model.json, and the protected policy. Start
+from the current champion and make exactly one focused, reversible strength or
+reliability improvement. You may edit only agent.py or files under weights/.
+Do not edit the harness, tests, workflows, controller, acceptance criteria,
+experiment state, training code, documentation, or Git metadata. Do not commit.
+
+Recent evidence digest (newest first):
+{experiment_digest(records)}
+
+Use the digest to avoid duplicating rejected ideas. Inspect only the specific
+retained experiment records or losing-game evidence needed for your hypothesis.
+Prefer a materially different direction when the recent record shows a stalled
+subdirection. Do not perform broad parameter sweeps manually.
 
 Hard requirements: get_move must always return a legal UCI move under the real
 clock; one CPU, 2 GB RAM, no network/GPU; readable source; no existing engine or
 wrapper. The repository-trained model must continue to materially determine
-leaf evaluation and move selection. Prefer a small reversible experiment. Run
-the focused local tests you need, but do not commit and do not create notes."""
+leaf evaluation and move selection. The deterministic controller will run all
+tests and benchmarks after you finish."""
+
+
+def codex_generate(worktree: Path, prompt: str, policy: dict[str, Any]) -> dict[str, Any]:
     completed = run(
         [
             "codex",
@@ -149,9 +229,121 @@ the focused local tests you need, but do not commit and do not create notes."""
     )
     if completed.returncode:
         raise CandidateError(f"Codex failed: {completed.stderr[-5000:]}")
+    return {
+        "generator": "codex-exec",
+        "generator_prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
+    }
+
+
+def claude_command(prompt: str, policy: dict[str, Any]) -> list[str]:
+    """Build the no-shell, no-web, non-persistent Claude invocation."""
+    settings = policy["candidate_generators"]
+    return [
+        "claude",
+        "-p",
+        "--safe-mode",
+        "--no-chrome",
+        "--no-session-persistence",
+        "--disable-slash-commands",
+        "--strict-mcp-config",
+        "--permission-mode",
+        "acceptEdits",
+        "--tools",
+        "Read",
+        "Edit",
+        "Write",
+        "Glob",
+        "Grep",
+        "--disallowed-tools",
+        "Bash",
+        "WebFetch",
+        "WebSearch",
+        "--model",
+        str(settings["claude_model"]),
+        "--effort",
+        str(settings["claude_effort"]),
+        "--max-budget-usd",
+        str(settings["claude_max_budget_usd"]),
+        "--output-format",
+        "json",
+        prompt,
+    ]
+
+
+def claude_generate(worktree: Path, prompt: str, policy: dict[str, Any]) -> dict[str, Any]:
+    environment = os.environ.copy()
+    for variable in (
+        "ANTHROPIC_API_KEY",
+        "CODEX_API_KEY",
+        "OPENAI_API_KEY",
+        "GH_TOKEN",
+        "GITHUB_TOKEN",
+    ):
+        environment.pop(variable, None)
+    authentication = run(
+        ["claude", "auth", "status"], check=False, env=environment
+    )
+    try:
+        auth_payload = json.loads(authentication.stdout)
+    except json.JSONDecodeError as exc:
+        raise CandidateError("Claude authentication status was not valid JSON") from exc
+    if authentication.returncode or not auth_payload.get("loggedIn"):
+        raise CandidateError("Claude Code is not authenticated")
+    version = run(["claude", "--version"], check=False, env=environment)
+    if version.returncode:
+        raise CandidateError(f"Claude version check failed: {version.stderr[-2000:]}")
+    completed = run(
+        claude_command(prompt, policy),
+        cwd=worktree,
+        timeout=policy["candidate_timeout_seconds"],
+        check=False,
+        env=environment,
+    )
+    if completed.returncode:
+        raise CandidateError(
+            f"Claude failed: {completed.stdout[-3000:]}\n{completed.stderr[-3000:]}"
+        )
+    try:
+        payload = json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        raise CandidateError("Claude result was not valid JSON") from exc
+    if payload.get("is_error") or payload.get("subtype") != "success":
+        raise CandidateError(f"Claude returned an error: {payload.get('result', '')}")
+    denials = payload.get("permission_denials", [])
+    if denials:
+        raise CandidateError(f"Claude attempted disallowed operations: {denials}")
+    model_usage = payload.get("modelUsage", {})
+    models = sorted(model_usage) if isinstance(model_usage, dict) else []
+    return {
+        "generator": "claude-code",
+        "generator_version": version.stdout.strip(),
+        "generator_models": models,
+        "generator_prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
+        "generator_usage": {
+            "duration_ms": payload.get("duration_ms"),
+            "num_turns": payload.get("num_turns"),
+            "total_cost_usd": payload.get("total_cost_usd"),
+        },
+    }
+
+
+def generate_candidate(
+    worktree: Path,
+    experiment_id: str,
+    policy: dict[str, Any],
+    generator: str,
+    records: list[dict[str, Any]],
+) -> dict[str, Any]:
+    prompt = candidate_prompt(worktree, experiment_id, generator, records)
+    if generator == "codex-exec":
+        metadata = codex_generate(worktree, prompt, policy)
+    elif generator == "claude-code":
+        metadata = claude_generate(worktree, prompt, policy)
+    else:
+        raise CandidateError(f"unknown candidate generator: {generator}")
     paths = status_paths(worktree)
     if not paths:
-        raise CandidateError("Codex produced no change")
+        raise CandidateError(f"{generator} produced no change")
     illegal = [path for path in paths if not path_allowed(path, policy)]
     if illegal:
         raise CandidateError(f"candidate changed protected/disallowed paths: {illegal}")
@@ -160,10 +352,8 @@ the focused local tests you need, but do not commit and do not create notes."""
     if not staged:
         raise CandidateError("candidate produced no stageable submission change")
     git("commit", "-m", f"experiment {experiment_id}: AI candidate", cwd=worktree)
-    return {
-        "generator": "codex-exec",
-        "candidate_commit": git("rev-parse", "HEAD", cwd=worktree),
-    }
+    metadata["candidate_commit"] = git("rev-parse", "HEAD", cwd=worktree)
+    return metadata
 
 
 def github_evaluate(
@@ -604,7 +794,18 @@ def one_iteration(args: argparse.Namespace) -> bool:
             record["resumed_after_interruption"] = True
         else:
             git("worktree", "add", "-b", branch, str(worktree), champion)
-            proposal = generate_candidate(worktree, experiment_id, policy)
+            generator, recent_records = select_candidate_generator(state, policy)
+            record["generator"] = generator
+            record["consecutive_non_improvements"] = consecutive_non_improvements(
+                recent_records
+            )
+            proposal = generate_candidate(
+                worktree,
+                experiment_id,
+                policy,
+                generator,
+                recent_records,
+            )
         record.update(proposal)
         candidate_sha = proposal["candidate_commit"]
         illegal = [
@@ -649,11 +850,11 @@ def one_iteration(args: argparse.Namespace) -> bool:
 
 
 def preflight() -> None:
-    for executable in ("codex", "gh", "git", "uv"):
+    for executable in ("claude", "codex", "gh", "git", "uv"):
         if shutil.which(executable) is None:
             raise RuntimeError(f"required executable not found: {executable}")
-    if git("status", "--porcelain"):
-        raise RuntimeError("controller checkout must be clean")
+    if git("status", "--porcelain", "--untracked-files=no"):
+        raise RuntimeError("controller checkout must have no tracked modifications")
     if git("branch", "--show-current") != "main":
         raise RuntimeError("controller must run from main")
     run(["gh", "auth", "status", "-h", "github.com"])

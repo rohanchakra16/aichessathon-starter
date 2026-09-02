@@ -4,6 +4,16 @@
   "candidate_timeout_seconds": 900,
   "ci_timeout_seconds": 1200,
   "release_timeout_seconds": 2400,
+  "candidate_generators": {
+    "primary": "codex-exec",
+    "secondary": "claude-code",
+    "secondary_after_non_improvements": 3,
+    "secondary_cadence": 3,
+    "recent_experiment_limit": 12,
+    "claude_model": "sonnet",
+    "claude_effort": "high",
+    "claude_max_budget_usd": 1.0
+  },
   "candidate_allowed_paths": [
     "agent.py",
     "weights/"

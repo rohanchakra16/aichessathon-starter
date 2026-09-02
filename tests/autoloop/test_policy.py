@@ -143,6 +143,65 @@ def test_workflow_queries_are_pinned_to_user_fork() -> None:
     assert policy()["github_repository"] == "rohanchakra16/aichessathon-starter"
 
 
+def test_generator_schedule_uses_claude_only_at_stalled_cadence() -> None:
+    current = policy()
+    expected = {
+        0: "codex-exec",
+        1: "codex-exec",
+        2: "codex-exec",
+        3: "claude-code",
+        4: "codex-exec",
+        5: "codex-exec",
+        6: "claude-code",
+    }
+    assert {
+        count: controller.generator_for_stall_count(count, current)
+        for count in expected
+    } == expected
+
+
+def test_stall_counter_uses_only_scientific_non_improvements() -> None:
+    records = [
+        {"status": "rejected"},
+        {"status": "infrastructure_error"},
+        {"status": "inconclusive"},
+        {"status": "accepted"},
+        {"status": "rejected"},
+    ]
+    assert controller.consecutive_non_improvements(records) == 2
+    assert controller.consecutive_non_improvements([{"status": "failed"}, *records]) == 0
+
+
+def test_claude_command_has_no_shell_web_or_permission_bypass() -> None:
+    command = controller.claude_command("safe prompt", policy())
+    assert command[:2] == ["claude", "-p"]
+    assert "--dangerously-skip-permissions" not in command
+    assert "--allow-dangerously-skip-permissions" not in command
+    assert command[command.index("--permission-mode") + 1] == "acceptEdits"
+    disallowed = command[command.index("--disallowed-tools") + 1 :]
+    assert "Bash" in disallowed
+    assert "WebFetch" in disallowed
+    assert "WebSearch" in disallowed
+    assert "--no-session-persistence" in command
+    assert "--strict-mcp-config" in command
+
+
+def test_experiment_digest_is_bounded_and_omits_raw_payloads() -> None:
+    records = [
+        {
+            "id": "exp-0046",
+            "status": "rejected",
+            "generator": "diagnosis",
+            "decision_reason": "neutral result " * 100,
+            "arena": {"pgn": "must not be copied"},
+        }
+    ]
+    digest = controller.experiment_digest(records)
+    assert "exp-0046" in digest
+    assert "must not be copied" not in digest
+    assert len(digest) < 500
+
+
 def test_status_parser_preserves_first_filename_character() -> None:
     completed = Mock(stdout=" M agent.py\n?? weights/new.json\n")
     with patch("controller.run", return_value=completed):
