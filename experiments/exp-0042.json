@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "id": "exp-0042",
+  "branch": "autoloop/candidate-0042",
+  "candidate_commit": "a843d47e5e938ec6a4db29dc1abdc1692e6086fc",
+  "champion_commit": "ec2269b3fd767766bb9b554b0bceb387142f8da3",
+  "started_at": "2026-09-02T14:01:00Z",
+  "completed_at": "2026-09-02T14:04:54Z",
+  "status": "rejected",
+  "generator": "stockfish-hard-position-search-diagnosis",
+  "change": "75-centipawn aspiration windows from depth three with full-window recovery",
+  "decision_reason": "complete-search teacher alignment regressed at the short budget and was only neutral on the highest-regret medium-budget positions",
+  "protected_hash": "0355ae8b9bf3e51026cbe7eb0cbfda93fa12dab3361a233112c0e0c2df097f7e",
+  "offline_search_screens": [
+    {
+      "time_left_ms": 3000,
+      "positions": 143,
+      "champion_top1": 0.2937062937062937,
+      "candidate_top1": 0.2867132867132867,
+      "champion_top3": 0.5174825174825175,
+      "candidate_top3": 0.5034965034965035,
+      "failures": 0
+    },
+    {
+      "time_left_ms": 10000,
+      "positions": 32,
+      "selection": "highest teacher regret",
+      "champion_top1": 0.1875,
+      "candidate_top1": 0.1875,
+      "champion_top3": 0.3125,
+      "candidate_top3": 0.3125,
+      "failures": 0
+    }
+  ],
+  "local_checks": {
+    "ruff": "passed",
+    "mypy": "passed",
+    "two_colour_random_smoke": "2-0, zero failures"
+  },
+  "ci": {
+    "skipped": true,
+    "reason": "candidate failed the prospective complete-search teacher-alignment screen"
+  },
+  "arena": {
+    "skipped": true,
+    "reason": "offline rejection prevented unnecessary game expenditure"
+  }
+}
