@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "exp-0046",
+  "branch": "research/real-clock-budget-offline-rejected",
+  "candidate_commit": "fdcd1fa9cb25d695b3e2f8abbd84a3f80ce792a5",
+  "champion_commit": "ce4a15401627a74e44fad1512e71430b25832d92",
+  "started_at": "2026-09-02T14:59:00Z",
+  "completed_at": "2026-09-02T15:02:02Z",
+  "status": "rejected",
+  "generator": "stockfish-hard-position-real-clock-search-diagnosis",
+  "change": "increase healthy-clock search cap from 2.0 to 2.2 seconds and allocation divisor from 60 to 55",
+  "decision_reason": "extra search time produced exactly neutral teacher alignment on the highest-regret real-clock positions",
+  "protected_hash": "3cea7639e500e0561d68d6e4eecec87438fa0e65bcee054fcfc169551eaa2c32",
+  "offline_search_screen": {
+    "time_left_ms": 120000,
+    "positions": 16,
+    "selection": "highest teacher regret across both independent cycles",
+    "champion_top1": 0.1875,
+    "candidate_top1": 0.1875,
+    "champion_top3": 0.4375,
+    "candidate_top3": 0.4375,
+    "champion_unlisted": 8,
+    "candidate_unlisted": 8,
+    "failures": 0
+  },
+  "local_checks": {
+    "ruff": "passed",
+    "mypy": "passed"
+  },
+  "ci": {
+    "skipped": true,
+    "reason": "candidate failed to improve the prospective real-clock teacher-alignment screen"
+  },
+  "arena": {
+    "skipped": true,
+    "reason": "offline neutral result prevented unnecessary game expenditure"
+  }
+}
