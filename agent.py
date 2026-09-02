@@ -35,6 +35,7 @@ TT_LOWER = 1
 TT_UPPER = 2
 LMR_MIN_DEPTH = 3
 LMR_QUIET_INDEX = 4
+SEE_VALUES = (0, 100, 320, 330, 500, 900, 20_000)
 
 _deadline = math.inf
 _nodes = 0
@@ -74,18 +75,101 @@ def _model_evaluate(board: chess.Board) -> float:
     return BIAS + score
 
 
-def _ordered_moves(board: chess.Board, principal: chess.Move | None = None) -> list[chess.Move]:
-    def priority(move: chess.Move) -> tuple[int, int, int, str]:
+def _capture_gain(board: chess.Board, move: chess.Move) -> int:
+    """Return the material collected by one legal capture, including promotion."""
+    captured = (
+        chess.PAWN
+        if board.is_en_passant(move)
+        else (board.piece_type_at(move.to_square) or 0)
+    )
+    promotion_gain = 0
+    if move.promotion is not None:
+        promotion_gain = SEE_VALUES[move.promotion] - SEE_VALUES[chess.PAWN]
+    return SEE_VALUES[captured] + promotion_gain
+
+
+def _least_valuable_recapture(
+    board: chess.Board, target: chess.Square
+) -> chess.Move | None:
+    """Choose the cheapest legal recapture so pins and king safety are respected."""
+    recaptures = [
+        move for move in board.generate_legal_captures() if move.to_square == target
+    ]
+    if not recaptures:
+        return None
+    return min(
+        recaptures,
+        key=lambda move: (
+            SEE_VALUES[board.piece_type_at(move.from_square) or 0],
+            move.uci(),
+        ),
+    )
+
+
+def _static_exchange(board: chess.Board, move: chess.Move) -> int:
+    """Estimate a capture's material result along legal least-value recaptures."""
+    gains = [_capture_gain(board, move)]
+    target = move.to_square
+    pushed = 0
+    try:
+        board.push(move)
+        pushed += 1
+        while True:
+            recapture = _least_valuable_recapture(board, target)
+            if recapture is None:
+                break
+            gains.append(_capture_gain(board, recapture))
+            board.push(recapture)
+            pushed += 1
+    finally:
+        for _ in range(pushed):
+            board.pop()
+
+    result = gains[-1]
+    for gain in reversed(gains[:-1]):
+        result = gain - max(0, result)
+    return result
+
+
+def _ordered_moves(
+    board: chess.Board,
+    principal: chess.Move | None = None,
+    *,
+    captures_only: bool = False,
+    prune_losing_captures: bool = False,
+) -> list[chess.Move]:
+    moves = list(board.legal_moves)
+    if captures_only:
+        moves = [move for move in moves if board.is_capture(move)]
+    exchange_scores = {
+        move: _static_exchange(board, move)
+        for move in moves
+        if board.is_capture(move)
+    }
+    if prune_losing_captures:
+        moves = [
+            move
+            for move in moves
+            if (
+                exchange_scores.get(move, 0) >= 0
+                or board.gives_check(move)
+                or move.promotion is not None
+                or board.is_en_passant(move)
+            )
+        ]
+
+    def priority(move: chess.Move) -> tuple[int, int, int, int, str]:
         victim = board.piece_type_at(move.to_square) or 0
         attacker = board.piece_type_at(move.from_square) or 0
         return (
             1 if move == principal else 0,
             1 if move.promotion else 0,
+            exchange_scores.get(move, 0),
             victim * 10 - attacker,
             move.uci(),
         )
 
-    return sorted(board.legal_moves, key=priority, reverse=True)
+    return sorted(moves, key=priority, reverse=True)
 
 
 def _check_time() -> None:
@@ -113,9 +197,11 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
             return stand_pat
         alpha = max(alpha, stand_pat)
 
-    moves = _ordered_moves(board)
-    if not in_check:
-        moves = [move for move in moves if board.is_capture(move)]
+    moves = _ordered_moves(
+        board,
+        captures_only=not in_check,
+        prune_losing_captures=not in_check,
+    )
     if not moves:
         return _model_evaluate(board)
 
