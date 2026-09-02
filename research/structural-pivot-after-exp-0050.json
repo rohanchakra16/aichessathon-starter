@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "completed_at": "2026-09-02T21:24:05Z",
+  "champion_commit": "ce4a15401627a74e44fad1512e71430b25832d92",
+  "evidence_window": [
+    "exp-0043",
+    "exp-0044",
+    "exp-0045",
+    "exp-0046",
+    "exp-0047",
+    "exp-0048",
+    "exp-0049",
+    "exp-0050"
+  ],
+  "reviewer": {
+    "generator": "claude-code",
+    "version": "2.1.236",
+    "models": [
+      "claude-haiku-4-5-20251001",
+      "claude-sonnet-5"
+    ],
+    "authorized_external_review": true,
+    "broad_review": {
+      "status": "budget_exhausted_before_report",
+      "maximum_budget_usd": 0.6,
+      "reported_cost_usd": 0.698874
+    },
+    "compact_review": {
+      "status": "completed",
+      "maximum_budget_usd": 0.35,
+      "reported_cost_usd": 0.109897
+    }
+  },
+  "recurring_failure_modes": [
+    "Small move-ordering and terminal-scoring heuristics remained statistically neutral.",
+    "Broad PSQT retraining improved shallow fit but regressed complete-search teacher alignment.",
+    "Spending more time or nodes without a structural efficiency gain was neutral or negative.",
+    "The only accepted post-exp-0039 change was a tightly scoped hard-position pairwise evaluator adjustment."
+  ],
+  "exhausted_ideas": [
+    "TT preferred-move cache",
+    "mate-distance terminal scores",
+    "quiet promotions in quiescence",
+    "history-heuristic move ordering",
+    "aspiration windows",
+    "broad fresh-cycle or rehearsal PSQT retraining",
+    "time-budget increases without a search change"
+  ],
+  "ranked_next_hypotheses": [
+    {
+      "rank": 1,
+      "title": "Depth-aware transposition-table score reuse",
+      "mechanism": "Store depth in a position-keyed entry and permit bound cutoffs only when the stored depth is at least the requested depth, with depth-preferring replacement.",
+      "scope": "Search-only; no evaluator or move-generation change.",
+      "pre_arena_gate": "Verify deeper-to-shallower reuse, unchanged protected tests, legal moves, zero stress failures, and no fixed-position regression before the paired arena.",
+      "risk": "Incorrect bound or replacement semantics could create unstable scores or invalid cutoffs."
+    },
+    {
+      "rank": 2,
+      "title": "Static-exchange evaluation for captures",
+      "mechanism": "Order captures by exchange outcome and initially prune only strictly losing quiescence captures.",
+      "scope": "Capture ordering and quiescence only; no retraining.",
+      "pre_arena_gate": "Hand-verified exchange positions, tactical solve non-regression, and measured quiescence-node reduction.",
+      "risk": "Pins, x-rays, promotions and en-passant handling can make an incorrect implementation tactically unsound."
+    },
+    {
+      "rank": 3,
+      "title": "Frozen-base king-safety feature block",
+      "mechanism": "Freeze the accepted 770 weights and fit only a minimal set of king-zone, pawn-shield and open-file features on hard positions.",
+      "scope": "Small evaluator extension plus constrained offline training.",
+      "pre_arena_gate": "Held-out full-search alignment improvement on king-attack positions with under five percent NPS loss and no global alignment regression.",
+      "risk": "Feature cost or coarse linear terms may erase the positional gain."
+    }
+  ],
+  "selected_next_hypothesis": 1,
+  "selection_reason": "It is structurally distinct from the rejected TT move cache, localized enough for causal evaluation, and can be validated with a direct reuse mechanism test before arena expenditure."
+}
