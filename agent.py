@@ -221,7 +221,7 @@ def _budget_seconds(time_left_ms: int) -> float:
         return 0.0
     clock = time_left_ms / 1000.0
     if clock >= 10.0:
-        return min(2.0, max(0.68, clock / 60.0), max(0.0, clock - 0.003))
+        return min(2.2, max(0.68, clock / 55.0), max(0.0, clock - 0.003))
     return min(0.68, max(0.002, clock / 25.0), max(0.0, clock - 0.003))
 
 
