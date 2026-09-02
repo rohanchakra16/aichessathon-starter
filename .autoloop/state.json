@@ -1,6 +1,6 @@
 {
-  "champion_commit": "ce4a15401627a74e44fad1512e71430b25832d92",
-  "last_completed_experiment": "exp-0051",
+  "champion_commit": "1b07bbed0a5837a115f47c4546c760ad8ab88183",
+  "last_completed_experiment": "exp-0052",
   "live_submission": {
     "artifact_sha256": "e5b660f7c06fa264f71524a770e6396e7d6cda8eff283b44a9bc00bd1544e8a8",
     "champion_commit": "ec2269b3fd767766bb9b554b0bceb387142f8da3",
@@ -11,13 +11,7 @@
     "validated_at": "2026-09-01T23:30:40Z",
     "version": 1
   },
-  "next_experiment": 52,
+  "next_experiment": 53,
   "schema_version": 1,
-  "submission_candidate": {
-    "artifact_sha256": "9e6e1587e1ce267ebe07f8b0ade14be510fa78dadb95bcba9970ad511eb6399e",
-    "champion_commit": "ce4a15401627a74e44fad1512e71430b25832d92",
-    "evaluated_main_commit": "3892caa4d571e620b85431e85b72c39b4f800ae2",
-    "release_record": "releases/3892caa4d571-33680024681.json",
-    "validated_at": "2026-09-02T20:37:14.187476+00:00"
-  }
+  "submission_candidate": null
 }
