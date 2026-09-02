@@ -299,7 +299,8 @@ def main() -> None:
     regrets = [float(context["regret"]) for context in selected]
     payload = {
         "schema_version": 1,
-        "kind": "stockfish_match_hard_position_dataset",
+        "kind": "champion_disagreement_active_learning_dataset",
+        "trajectory_source": "real_clock_match_against_strength_limited_stockfish",
         "seed": args.seed,
         "games_count": len(games),
         "opponent_elo": args.opponent_elo,
@@ -325,6 +326,7 @@ def main() -> None:
         "game_grouped": True,
         "dataset_sha256": digest,
         "games": games,
+        "annotated_contexts": selected,
         "rows": rows,
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
