@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "id": "exp-0044",
+  "branch": "research/pairwise-cycle2-offline-rejected",
+  "candidate_commit": "7efadc01f0e472f78927813fc934e8c290824f78",
+  "champion_commit": "ce4a15401627a74e44fad1512e71430b25832d92",
+  "started_at": "2026-09-02T14:45:00Z",
+  "completed_at": "2026-09-02T14:53:04Z",
+  "status": "rejected",
+  "generator": "second-cycle-stockfish-pairwise-psqt-finetune",
+  "decision_reason": "complete-search teacher alignment regressed on the fresh second-cycle dataset at both tested budgets",
+  "protected_hash": "e1d34071622ad90a7991e17618ac08d5800e283b11a3d3812a0a3ed94d89a15e",
+  "training": {
+    "dataset_sha256": "4ab677b51297b204ff14d224aaf73c9bdd227a41b9b3209d43034512e551ea82",
+    "opponent_elo": 1600,
+    "real_clock_games": 8,
+    "real_clock_score": 0.125,
+    "sampled_contexts": 123,
+    "mean_selected_regret_cp": 117.4308943089431,
+    "label_nodes": 20000,
+    "multipv": 5,
+    "ridge_penalty": 20.0,
+    "margin_clip_centipawns": 300.0,
+    "cross_validation": {
+      "baseline_margin_rmse": 171.6299233347388,
+      "candidate_margin_rmse": 165.50962604048243,
+      "baseline_top1": 0.25203252032520324,
+      "candidate_top1": 0.2764227642276423,
+      "baseline_mrr": 0.4813008130081301,
+      "candidate_mrr": 0.5008130081300813
+    },
+    "coefficient_delta_l2": 329.1368050809244,
+    "coefficient_delta_max": 87.00597916637294
+  },
+  "offline_search_screens": [
+    {
+      "time_left_ms": 3000,
+      "positions": 123,
+      "champion_top1": 0.2601626016260163,
+      "candidate_top1": 0.24390243902439024,
+      "champion_top3": 0.4634146341463415,
+      "candidate_top3": 0.4715447154471545,
+      "failures": 0
+    },
+    {
+      "time_left_ms": 10000,
+      "positions": 32,
+      "selection": "highest teacher regret",
+      "champion_top1": 0.0625,
+      "candidate_top1": 0.03125,
+      "champion_top3": 0.1875,
+      "candidate_top3": 0.125,
+      "failures": 0
+    }
+  ],
+  "ci": {
+    "skipped": true,
+    "reason": "candidate failed the prospective complete-search teacher-alignment screen"
+  },
+  "arena": {
+    "skipped": true,
+    "reason": "offline rejection prevented unnecessary game expenditure"
+  }
+}
