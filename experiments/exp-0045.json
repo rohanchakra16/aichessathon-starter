@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "id": "exp-0045",
+  "branch": "research/pairwise-rehearsal-offline-rejected",
+  "candidate_commit": "9187b9991d6fa98236169adfa910d8868d064657",
+  "champion_commit": "ce4a15401627a74e44fad1512e71430b25832d92",
+  "started_at": "2026-09-02T14:54:00Z",
+  "completed_at": "2026-09-02T14:58:39Z",
+  "status": "rejected",
+  "generator": "combined-cycle-stockfish-pairwise-psqt-rehearsal",
+  "decision_reason": "combined rehearsal retrains regressed complete-search teacher alignment across both independent cycles",
+  "protected_hash": "3cea7639e500e0561d68d6e4eecec87438fa0e65bcee054fcfc169551eaa2c32",
+  "training": {
+    "dataset_sha256": "9d3885ea2b30c04bf2bcbb71c3ad6a4dd25d7511bd8323680e34ce23ac2ca74f",
+    "source_datasets": [
+      "37708959ecf7e64abecce9de89e990cc23dc49dcea45da9aabebbb11c26b90f0",
+      "4ab677b51297b204ff14d224aaf73c9bdd227a41b9b3209d43034512e551ea82"
+    ],
+    "source_games": 16,
+    "sampled_contexts": 266,
+    "rows": 1610,
+    "base_champion": "exp-0039",
+    "ridge_penalty": 50.0,
+    "margin_clip_centipawns": 200.0,
+    "cross_validation": {
+      "baseline_margin_rmse": 165.45100400551476,
+      "candidate_margin_rmse": 163.24098856810963,
+      "baseline_top1": 0.2894736842105263,
+      "candidate_top1": 0.29699248120300753,
+      "baseline_mrr": 0.5142857142857143,
+      "candidate_mrr": 0.5161027568922306
+    },
+    "coefficient_delta_l2": 246.3355787868804,
+    "coefficient_delta_max": 66.26834292680935
+  },
+  "offline_search_screen": {
+    "time_left_ms": 3000,
+    "positions": 266,
+    "champion_top1": 0.31203007518796994,
+    "candidate_top1": 0.2819548872180451,
+    "champion_top3": 0.4924812030075188,
+    "candidate_top3": 0.45864661654135336,
+    "champion_unlisted": 105,
+    "candidate_unlisted": 116,
+    "failures": 0
+  },
+  "ci": {
+    "skipped": true,
+    "reason": "candidate failed the prospective complete-search teacher-alignment screen"
+  },
+  "arena": {
+    "skipped": true,
+    "reason": "offline rejection prevented unnecessary game expenditure"
+  }
+}
