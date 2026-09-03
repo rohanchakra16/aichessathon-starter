@@ -140,7 +140,14 @@ def _ordered_moves(
 ) -> list[chess.Move]:
     moves = list(board.legal_moves)
     if captures_only:
-        moves = [move for move in moves if board.is_capture(move)]
+        # Quiet promotions are tactically forcing too: stopping before them
+        # evaluates a seventh-rank pawn as a pawn despite an immediate material
+        # transformation on the next ply.
+        moves = [
+            move
+            for move in moves
+            if board.is_capture(move) or move.promotion is not None
+        ]
     exchange_scores = {
         move: _static_exchange(board, move)
         for move in moves
