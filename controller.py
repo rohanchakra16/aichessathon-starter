@@ -202,22 +202,32 @@ def candidate_prompt(
     records: list[dict[str, Any]],
 ) -> str:
     champion = git("rev-parse", "HEAD", cwd=worktree)
+    isolated_root = worktree.resolve()
     return f"""You are the {generator} candidate engineer for {experiment_id} in the
 AI Chessathon internal optimizer. The frozen champion is {champion}.
 
-Read AGENTS.md, agent.py, weights/model.json, and the protected policy. Start
-from the current champion and make exactly one focused, reversible strength or
-reliability improvement. You may edit only agent.py or files under weights/.
+Your only permitted filesystem root is {isolated_root}. This is the isolated
+candidate worktree. Use paths relative to the current working directory. Never
+read or write the parent/main checkout, another worktree, or any absolute path
+outside this root. Read AGENTS.md, agent.py, weights/model.json, and
+.autoloop/protected/policy.json from this worktree only. Do not fetch the URLs
+mentioned in AGENTS.md; the frozen protected policy is authoritative here.
+
+Start from the current champion and make exactly one focused, reversible
+strength or reliability improvement. You may edit only agent.py or files under
+weights/.
 Do not edit the harness, tests, workflows, controller, acceptance criteria,
 experiment state, training code, documentation, or Git metadata. Do not commit.
 
 Recent evidence digest (newest first):
 {experiment_digest(records)}
 
-Use the digest to avoid duplicating rejected ideas. Inspect only the specific
-retained experiment records or losing-game evidence needed for your hypothesis.
-Prefer a materially different direction when the recent record shows a stalled
-subdirection. Do not perform broad parameter sweeps manually.
+Use the digest to avoid duplicating rejected or inconclusive ideas. Treat an
+unsuccessful mechanism family as exhausted: changing only its cap, threshold,
+depth, or other parameter is not a new hypothesis. Before editing, compare your
+mechanism with every digest line and choose a materially different direction.
+Inspect only the specific retained experiment records or losing-game evidence
+needed for that hypothesis. Do not perform broad parameter sweeps manually.
 
 Hard requirements: get_move must always return a legal UCI move under the real
 clock; one CPU, 2 GB RAM, no network/GPU; readable source; no existing engine or

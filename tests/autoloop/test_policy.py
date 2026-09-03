@@ -218,6 +218,22 @@ def test_generator_summary_prefers_hypothesis_marker() -> None:
     assert summary == "HYPOTHESIS: focused mechanism"
 
 
+def test_candidate_prompt_enforces_isolation_and_mechanism_novelty(tmp_path: Path) -> None:
+    worktree = tmp_path / "candidate"
+    worktree.mkdir()
+    with patch("controller.git", return_value="frozen-champion"):
+        prompt = controller.candidate_prompt(
+            worktree,
+            "exp-0063",
+            "claude-code",
+            [{"id": "exp-0062", "status": "inconclusive"}],
+        )
+    assert str(worktree.resolve()) in prompt
+    assert "Never\nread or write the parent/main checkout" in prompt
+    assert "changing only its cap, threshold" in prompt
+    assert "Do not fetch the URLs" in prompt
+
+
 def test_status_parser_preserves_first_filename_character() -> None:
     completed = Mock(stdout=" M agent.py\n?? weights/new.json\n")
     with patch("controller.run", return_value=completed):
