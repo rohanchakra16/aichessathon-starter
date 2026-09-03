@@ -187,10 +187,10 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
         if outcome.winner is None:
             return 0.0
         return MATE if outcome.winner == board.turn else -MATE
-    if depth == 0:
+    in_check = board.is_check()
+    if depth == 0 and not in_check:
         return _model_evaluate(board)
 
-    in_check = board.is_check()
     if not in_check:
         stand_pat = _model_evaluate(board)
         if stand_pat >= beta:
@@ -208,7 +208,7 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
     best = -math.inf if in_check else alpha
     for move in moves:
         board.push(move)
-        score = -_quiescence(board, -beta, -alpha, depth - 1)
+        score = -_quiescence(board, -beta, -alpha, max(0, depth - 1))
         board.pop()
         best = max(best, score)
         alpha = max(alpha, score)
