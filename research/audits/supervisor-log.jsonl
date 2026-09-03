@@ -5,3 +5,5 @@
 {"at": "2026-09-03T21:29:03.647784+00:00", "event": "audit", "after_experiment": null, "decision": "CONTINUE", "stop_condition": null, "audit_path": "audit-20260903T212903Z-pre-first-batch.json", "next_direction_title": "Cheap mobility differential in leaf evaluation"}
 {"at": "2026-09-03T21:30:21.694174+00:00", "event": "batch", "experiments": ["exp-0088"], "promotion": false, "infra_error": null}
 {"at": "2026-09-03T21:31:35.775959+00:00", "event": "audit", "after_experiment": "exp-0088", "decision": "CONTINUE", "stop_condition": null, "audit_path": "audit-20260903T213135Z-exp-0088.json", "next_direction_title": "Cheap net-mobility differential in leaf evaluation"}
+{"at": "2026-09-03T21:37:33.494868+00:00", "event": "batch", "experiments": ["exp-0089"], "promotion": true, "infra_error": null}
+{"at": "2026-09-03T21:39:33.364442+00:00", "event": "stop", "reason": "claude_unavailable", "detail": "audit decision block was not valid JSON: Expecting property name enclosed in double quotes: line 16 column 3 (char 2599)"}

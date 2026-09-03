@@ -18,13 +18,15 @@ evidence audit (Claude)  ->  research/next-direction.md  ->  controller.py batch
    reliability, draw/loss breakdown), the 20 newest registry lines, the streak
    count, the exhausted-family list, and the previous audit. Saved to
    `research/audit-input/`.
-2. **Audit.** `claude -p --output-format json` with read-only tools
+2. **Audit.** `claude -p --output-format json --json-schema ...` with read-only tools
    (`Read`, `Grep`, `Glob`; `Bash`/`Edit`/`Write`/web disabled). Claude performs
-   the handoff's between-batch audit against the live repo and ends its reply
-   with an `<AUDIT_DECISION>` JSON block: `decision` (`CONTINUE`/`STOP`),
+   the handoff's between-batch audit against the live repo and returns a
+   schema-enforced object containing `decision` (`CONTINUE`/`STOP`),
    `stop_condition`, `streak_assessment`, `recurring_failure_modes`,
-   `next_direction`, `audit_summary`.
-3. **Persist.** The full audit (including Claude's prose) is written to
+   `next_direction`, and `audit_summary`. The supervisor prefers Claude CLI's
+   validated `structured_output` field; the older tagged-text parser remains
+   only for backward compatibility with retained audit responses.
+3. **Persist.** The full structured audit and Claude result text are written to
    `research/audits/audit-<timestamp>-<after-exp>.json`. A one-line event is
    appended to `research/audits/supervisor-log.jsonl`. This is the permanent
    research trail.
@@ -52,7 +54,7 @@ or empty the prompt is exactly as before.
 | Condition | Exit | State |
 | --- | --- | --- |
 | Claude audit returns `STOP` (`scientific_saturation` / `infrastructure_blocker`) | 0 | preserved, direction/trail committed |
-| Claude Code unavailable — auth, usage limit, transport, malformed decision | 20 | preserved, **no batch run** |
+| Claude Code unavailable — auth, usage limit, transport, or missing schema output | 20 | preserved, **no batch run** |
 | `--max-infra-failures` consecutive controller infrastructure failures (default 2) | 30 | preserved |
 | `.autoloop/supervisor.stop` file present (checked each cycle) | 0 | preserved |
 | `--max-batches` backstop reached (default 40) | 0 | preserved; re-run to continue |

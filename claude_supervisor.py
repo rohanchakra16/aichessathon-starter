@@ -48,9 +48,9 @@ from typing import Any
 
 import controller  # helper reuse only; controller stays the evaluation authority
 
-ROOT = controller.ROOT
-STATE_PATH = controller.STATE_PATH
-POLICY_PATH = controller.POLICY_PATH
+ROOT = Path(controller.ROOT)
+STATE_PATH = Path(controller.STATE_PATH)
+POLICY_PATH = Path(controller.POLICY_PATH)
 AUDIT_DIR = ROOT / "research/audits"
 PACKET_DIR = ROOT / "research/audit-input"
 DIRECTION_PATH = ROOT / "research/next-direction.md"
@@ -59,6 +59,54 @@ LOG_PATH = ROOT / "research/audits/supervisor-log.jsonl"
 
 DECISION_OPEN = "<AUDIT_DECISION>"
 DECISION_CLOSE = "</AUDIT_DECISION>"
+AUDIT_DECISION_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "decision": {"type": "string", "enum": ["CONTINUE", "STOP"]},
+        "stop_condition": {
+            "type": ["string", "null"],
+            "enum": [None, "infrastructure_blocker", "scientific_saturation"],
+        },
+        "streak_assessment": {"type": "string"},
+        "recurring_failure_modes": {
+            "type": "array",
+            "items": {"type": "string"},
+        },
+        "next_direction": {
+            "anyOf": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "title": {"type": "string"},
+                        "family": {"type": "string"},
+                        "hypothesis": {"type": "string"},
+                        "rationale": {"type": "string"},
+                        "guardrails": {"type": "string"},
+                    },
+                    "required": [
+                        "title",
+                        "family",
+                        "hypothesis",
+                        "rationale",
+                        "guardrails",
+                    ],
+                    "additionalProperties": False,
+                },
+                {"type": "null"},
+            ]
+        },
+        "audit_summary": {"type": "string"},
+    },
+    "required": [
+        "decision",
+        "stop_condition",
+        "streak_assessment",
+        "recurring_failure_modes",
+        "next_direction",
+        "audit_summary",
+    ],
+    "additionalProperties": False,
+}
 
 # Mechanism families the handoff and the retained registry already record as
 # exhausted in their tested form. Kept here so every audit sees them without
@@ -332,28 +380,15 @@ time constant of any of the above is NOT a materially new hypothesis.
    - Give concrete guardrails (NPS budget, model-ablation-gate safety,
      reliability/flag risk).
 
-## Required output
+## Required structured output
 
-Write your analysis, then end your reply with exactly one block:
-
-{DECISION_OPEN}
-{{
-  "decision": "CONTINUE" | "STOP",
-  "stop_condition": null | "infrastructure_blocker" | "scientific_saturation",
-  "streak_assessment": "one or two sentences",
-  "recurring_failure_modes": ["..."],
-  "next_direction": {{
-    "title": "short name",
-    "family": "leaf-evaluation | opening-book | search-state | evaluation-training | other",
-    "hypothesis": "one sentence, materially different from every saturated family",
-    "rationale": "grounded in champion code, retained games, or the registry",
-    "guardrails": "NPS / ablation-gate / reliability considerations"
-  }},
-  "audit_summary": "2-4 sentences capturing the state of the research"
-}}
-{DECISION_CLOSE}
-
-If decision is STOP, next_direction may be null."""
+Return exactly one object matching the JSON Schema enforced by the Claude CLI.
+Do not wrap it in Markdown, prose, code fences or XML tags. Put the important
+analysis in `streak_assessment`, `recurring_failure_modes`, `rationale` and
+`audit_summary`. For CONTINUE, `stop_condition` must be null and
+`next_direction` must be a complete object. For STOP, `stop_condition` must be
+`infrastructure_blocker` or `scientific_saturation`, and `next_direction` may
+be null."""
 
 
 # --------------------------------------------------------------------------- #
@@ -372,19 +407,51 @@ class AuditResult:
     parsed: dict[str, Any] = field(default_factory=dict)
 
 
+def validate_decision(parsed: dict[str, Any]) -> dict[str, Any]:
+    """Apply semantic checks in addition to Claude's JSON Schema validation."""
+    decision = parsed.get("decision")
+    if decision not in ("CONTINUE", "STOP"):
+        raise ClaudeUnavailable(f"audit decision was not CONTINUE/STOP: {decision!r}")
+    stop_condition = parsed.get("stop_condition")
+    direction = parsed.get("next_direction")
+    if decision == "CONTINUE":
+        if stop_condition is not None:
+            raise ClaudeUnavailable("CONTINUE audit supplied a stop condition")
+        if not isinstance(direction, dict):
+            raise ClaudeUnavailable("CONTINUE audit supplied no next direction")
+    elif stop_condition not in ("infrastructure_blocker", "scientific_saturation"):
+        raise ClaudeUnavailable("STOP audit supplied no valid stop condition")
+    return parsed
+
+
 def parse_decision(result_text: str) -> dict[str, Any]:
+    """Parse legacy tagged audit output retained for backward compatibility."""
     start = result_text.rfind(DECISION_OPEN)
     end = result_text.rfind(DECISION_CLOSE)
     if start < 0 or end < 0 or end <= start:
-        raise ClaudeUnavailable("audit response contained no <AUDIT_DECISION> block")
-    blob = result_text[start + len(DECISION_OPEN) : end].strip()
+        blob = result_text.strip()
+    else:
+        blob = result_text[start + len(DECISION_OPEN) : end].strip()
     try:
         parsed: dict[str, Any] = json.loads(blob)
     except json.JSONDecodeError as exc:
         raise ClaudeUnavailable(f"audit decision block was not valid JSON: {exc}") from exc
-    if parsed.get("decision") not in ("CONTINUE", "STOP"):
-        raise ClaudeUnavailable(f"audit decision was not CONTINUE/STOP: {parsed.get('decision')!r}")
-    return parsed
+    return validate_decision(parsed)
+
+
+def decision_from_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Prefer schema-enforced output; fall back to legacy result text."""
+    structured = payload.get("structured_output")
+    if structured is None:
+        return parse_decision(str(payload.get("result", "")))
+    if isinstance(structured, str):
+        try:
+            structured = json.loads(structured)
+        except json.JSONDecodeError as exc:
+            raise ClaudeUnavailable(f"structured audit output was not valid JSON: {exc}") from exc
+    if not isinstance(structured, dict):
+        raise ClaudeUnavailable("structured audit output was not an object")
+    return validate_decision(structured)
 
 
 def run_claude_audit(packet: str, args: argparse.Namespace) -> AuditResult:
@@ -393,6 +460,8 @@ def run_claude_audit(packet: str, args: argparse.Namespace) -> AuditResult:
         "-p",
         "--output-format",
         "json",
+        "--json-schema",
+        json.dumps(AUDIT_DECISION_SCHEMA, separators=(",", ":")),
         "--model",
         args.audit_model,
         "--effort",
@@ -438,8 +507,8 @@ def run_claude_audit(packet: str, args: argparse.Namespace) -> AuditResult:
         raise ClaudeUnavailable(f"claude returned an error: {str(payload.get('result'))[:500]}")
     if payload.get("permission_denials"):
         raise ClaudeUnavailable(f"claude hit permission denials: {payload['permission_denials']}")
-    result_text = str(payload.get("result", ""))
-    parsed = parse_decision(result_text)
+    parsed = decision_from_payload(payload)
+    result_text = str(payload.get("result", "")) or json.dumps(parsed, indent=2)
     return AuditResult(
         decision=parsed["decision"],
         stop_condition=parsed.get("stop_condition"),
