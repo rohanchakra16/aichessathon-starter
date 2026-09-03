@@ -182,7 +182,7 @@ def _forced_draw(board: chess.Board) -> bool:
     """
     return (
         board.halfmove_clock >= 100
-        or board.is_repetition(3)
+        or (board.halfmove_clock >= 8 and board.is_repetition(3))
         or board.is_insufficient_material()
     )
 
