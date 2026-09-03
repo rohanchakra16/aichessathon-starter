@@ -35,6 +35,8 @@ TT_LOWER = 1
 TT_UPPER = 2
 LMR_MIN_DEPTH = 3
 LMR_QUIET_INDEX = 4
+DELTA_MARGIN = 160.0
+DELTA_MIN_NON_PAWN = 4
 SEE_VALUES = (0, 100, 320, 330, 500, 900, 20_000)
 
 _deadline = math.inf
@@ -206,11 +208,15 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
             return -MATE
         return _model_evaluate(board)
 
+    delta_prune = False
+    stand_pat = 0.0
     if not in_check:
         stand_pat = _model_evaluate(board)
         if stand_pat >= beta:
             return stand_pat
         alpha = max(alpha, stand_pat)
+        non_pawn = board.occupied & ~board.pawns & ~board.kings
+        delta_prune = chess.popcount(non_pawn) >= DELTA_MIN_NON_PAWN
 
     moves = _ordered_moves(
         board,
@@ -222,6 +228,15 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
 
     best = -math.inf if in_check else alpha
     for move in moves:
+        if (
+            delta_prune
+            and move.promotion is None
+            and stand_pat + _capture_gain(board, move) + DELTA_MARGIN <= alpha
+            and not board.gives_check(move)
+        ):
+            # This capture cannot lift the score to alpha even in the best case
+            # and it neither promotes nor checks, so searching it is wasted work.
+            continue
         board.push(move)
         score = -_quiescence(board, -beta, -alpha, depth - 1)
         board.pop()
