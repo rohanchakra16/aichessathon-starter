@@ -223,8 +223,10 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
     best = -math.inf if in_check else alpha
     for move in moves:
         board.push(move)
-        score = -_quiescence(board, -beta, -alpha, depth - 1)
-        board.pop()
+        try:
+            score = -_quiescence(board, -beta, -alpha, depth - 1)
+        finally:
+            board.pop()
         best = max(best, score)
         alpha = max(alpha, score)
         if alpha >= beta:
@@ -269,16 +271,18 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
             and not board.gives_check(move)
         )
         board.push(move)
-        if move_index == 0:
-            score = -_negamax(board, depth - 1, -beta, -alpha)
-        else:
-            probe_depth = depth - 2 if reduce_quiet else depth - 1
-            score = -_negamax(board, probe_depth, -alpha - 1.0, -alpha)
-            if reduce_quiet and score > alpha:
-                score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha)
-            if alpha < score < beta:
+        try:
+            if move_index == 0:
                 score = -_negamax(board, depth - 1, -beta, -alpha)
-        board.pop()
+            else:
+                probe_depth = depth - 2 if reduce_quiet else depth - 1
+                score = -_negamax(board, probe_depth, -alpha - 1.0, -alpha)
+                if reduce_quiet and score > alpha:
+                    score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha)
+                if alpha < score < beta:
+                    score = -_negamax(board, depth - 1, -beta, -alpha)
+        finally:
+            board.pop()
         if score > best:
             best = score
         if score > alpha:
