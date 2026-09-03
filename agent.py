@@ -41,6 +41,35 @@ LMR_QUIET_INDEX = 4
 # the search gains a monotone reason to prefer active moves over shuffling.
 MOBILITY_WEIGHT = 3.0
 SEE_VALUES = (0, 100, 320, 330, 500, 900, 20_000)
+# Flat rank-scaled bonus (centipawns) for a passed pawn, indexed by the pawn's
+# rank from its own side's perspective (0..6, where 6 is the 7th rank). The
+# schedule rises sharply so the search has a monotone reason to push a passer
+# and to trade into endgames where it matters; even a worst case of two passers
+# on the 6th/7th stays near a pawn, far below the model's margin RMSE, so the
+# trained piece-square model plus the mobility term stay dominant.
+PASSED_BONUS = (0.0, 8.0, 14.0, 24.0, 42.0, 74.0, 122.0)
+
+
+def _build_passed_masks(white: bool) -> tuple[int, ...]:
+    """Union of a pawn's file and both neighbours, restricted to squares ahead."""
+    masks: list[int] = []
+    for square in range(64):
+        file = chess.square_file(square)
+        rank = chess.square_rank(square)
+        files_bb = 0
+        for neighbour in (file - 1, file, file + 1):
+            if 0 <= neighbour <= 7:
+                files_bb |= chess.BB_FILES[neighbour]
+        ranks_bb = 0
+        ahead = range(rank + 1, 8) if white else range(0, rank)
+        for ahead_rank in ahead:
+            ranks_bb |= chess.BB_RANKS[ahead_rank]
+        masks.append(files_bb & ranks_bb)
+    return tuple(masks)
+
+
+_PASSED_MASK_WHITE = _build_passed_masks(True)
+_PASSED_MASK_BLACK = _build_passed_masks(False)
 
 _deadline = math.inf
 _nodes = 0
@@ -58,11 +87,19 @@ def _model_evaluate(board: chess.Board) -> float:
     endgame = 0.0
     phase = 0
     mobility = 0.0
+    passed = 0.0
+    white_pawns = board.pieces_mask(chess.PAWN, chess.WHITE)
+    black_pawns = board.pieces_mask(chess.PAWN, chess.BLACK)
     for colour, sign in ((side, 1.0), (not side, -1.0)):
         for piece_type in range(chess.PAWN, chess.KING + 1):
             squares = board.pieces(piece_type, colour)
             phase += PHASE_VALUES[piece_type] * len(squares)
             offset = (piece_type - 1) * 64
+            is_pawn = piece_type == chess.PAWN
+            enemy_pawns = black_pawns if colour == chess.WHITE else white_pawns
+            passed_mask = (
+                _PASSED_MASK_WHITE if colour == chess.WHITE else _PASSED_MASK_BLACK
+            )
             for square in squares:
                 relative = square if colour == chess.WHITE else chess.square_mirror(square)
                 midgame += sign * WEIGHTS[offset + relative]
@@ -72,10 +109,17 @@ def _model_evaluate(board: chess.Board) -> float:
                     # per-leaf object allocation and reuses the piece loop rather
                     # than generating moves a second time.
                     mobility += sign * chess.popcount(board.attacks_mask(square))
+                if is_pawn and not (passed_mask[square] & enemy_pawns):
+                    # No enemy pawn on this pawn's file or the adjacent files
+                    # ahead of it: a passed pawn. Reward it flat by relative rank
+                    # so the search sees a progress gradient in locked and
+                    # simplified positions that mobility cannot express.
+                    passed += sign * PASSED_BONUS[chess.square_rank(relative)]
 
     blend = min(1.0, phase / MAX_PHASE)
     score = blend * midgame + (1.0 - blend) * endgame
     score += MOBILITY_WEIGHT * mobility
+    score += passed
     if board.has_kingside_castling_rights(side):
         score += WEIGHTS[CASTLING_OFFSET]
     if board.has_kingside_castling_rights(not side):
