@@ -28,3 +28,4 @@
 {"at": "2026-09-03T23:44:44.232808+00:00", "event": "audit", "after_experiment": "exp-0095", "decision": "CONTINUE", "stop_condition": null, "audit_path": "audit-20260903T234444Z-exp-0095.json", "next_direction_title": "Halfmove-clock progress gradient in the leaf evaluation for reduced-material endgames"}
 {"at": "2026-09-03T23:54:52.053702+00:00", "event": "batch", "experiments": ["exp-0096"], "promotion": false, "infra_error": null}
 {"at": "2026-09-03T23:57:28.157633+00:00", "event": "audit", "after_experiment": "exp-0096", "decision": "STOP", "stop_condition": "scientific_saturation", "audit_path": "audit-20260903T235728Z-exp-0096.json", "next_direction_title": null}
+{"at": "2026-09-03T23:57:29.755305+00:00", "event": "stop", "reason": "claude audit returned STOP (scientific_saturation)"}
