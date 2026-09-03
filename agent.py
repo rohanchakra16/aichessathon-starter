@@ -75,6 +75,18 @@ def _model_evaluate(board: chess.Board) -> float:
     return BIAS + score
 
 
+def _move_order_key(move: chess.Move) -> int:
+    """Cheap deterministic tie-breaker replacing per-move UCI string building.
+
+    ``_ordered_moves`` and ``_least_valuable_recapture`` only need a stable,
+    reproducible ordering for moves that are otherwise equal. Building a UCI
+    string for every legal move at every node allocates throwaway strings; a
+    packed integer of the from/to squares and promotion piece gives the same
+    determinism far more cheaply, leaving more of the clock for deeper search.
+    """
+    return move.from_square | (move.to_square << 6) | ((move.promotion or 0) << 12)
+
+
 def _capture_gain(board: chess.Board, move: chess.Move) -> int:
     """Return the material collected by one legal capture, including promotion."""
     captured = (
@@ -101,7 +113,7 @@ def _least_valuable_recapture(
         recaptures,
         key=lambda move: (
             SEE_VALUES[board.piece_type_at(move.from_square) or 0],
-            move.uci(),
+            _move_order_key(move),
         ),
     )
 
@@ -158,7 +170,7 @@ def _ordered_moves(
             )
         ]
 
-    def priority(move: chess.Move) -> tuple[int, int, int, int, str]:
+    def priority(move: chess.Move) -> tuple[int, int, int, int, int]:
         victim = board.piece_type_at(move.to_square) or 0
         attacker = board.piece_type_at(move.from_square) or 0
         return (
@@ -166,7 +178,7 @@ def _ordered_moves(
             1 if move.promotion else 0,
             exchange_scores.get(move, 0),
             victim * 10 - attacker,
-            move.uci(),
+            _move_order_key(move),
         )
 
     return sorted(moves, key=priority, reverse=True)
