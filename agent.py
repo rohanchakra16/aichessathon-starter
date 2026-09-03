@@ -35,6 +35,8 @@ TT_LOWER = 1
 TT_UPPER = 2
 LMR_MIN_DEPTH = 3
 LMR_QUIET_INDEX = 4
+NULL_MOVE_MIN_DEPTH = 3
+NULL_MOVE_REDUCTION = 2
 SEE_VALUES = (0, 100, 320, 330, 500, 900, 20_000)
 
 _deadline = math.inf
@@ -187,6 +189,17 @@ def _forced_draw(board: chess.Board) -> bool:
     )
 
 
+def _has_non_pawn_material(board: chess.Board) -> bool:
+    """True when the side to move holds a piece heavier than a pawn.
+
+    Used to gate null-move pruning away from king-and-pawn positions, where
+    passing the move can flip the verdict of a zugzwang.
+    """
+    side_mask = board.occupied_co[board.turn]
+    heavy = board.knights | board.bishops | board.rooks | board.queens
+    return bool(heavy & side_mask)
+
+
 def _check_time() -> None:
     global _nodes
     _nodes += 1
@@ -255,6 +268,24 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
             return cached_score
     best = -math.inf
     in_check = board.is_check()
+
+    if (
+        depth >= NULL_MOVE_MIN_DEPTH
+        and not in_check
+        and math.isfinite(beta)
+        and _has_non_pawn_material(board)
+    ):
+        board.push(chess.Move.null())
+        null_score = -_negamax(
+            board,
+            depth - 1 - NULL_MOVE_REDUCTION,
+            -beta,
+            -beta + 1.0,
+        )
+        board.pop()
+        if null_score >= beta and abs(null_score) < MATE - MAX_DEPTH:
+            return null_score
+
     moves = _ordered_moves(board)
     if not moves:
         return -MATE if in_check else 0.0
