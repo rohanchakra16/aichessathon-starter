@@ -1,0 +1,12 @@
+{
+  "branch": "autoloop/candidate-0061",
+  "completed_at": "2026-09-03T11:47:19.006700+00:00",
+  "consecutive_non_improvements": 8,
+  "failure": "CandidateError: Claude attempted disallowed operations: [{'tool_name': 'Read', 'tool_use_id': 'toolu_01MUXa9j4JX2AykrasybBNki', 'tool_input': {'file_path': '/Users/phantomvenom/Documents/Codex/2026-08-30/referenced-chatgpt-conversation-this-is-an/outputs/aichessathon-starter/.autoloop/protected/policy.json'}}, {'tool_name': 'Read', 'tool_use_id': 'toolu_01T9sGkyiH3xbB7WuHgXfaQC', 'tool_input': {'file_path': '/Users/phantomvenom/Documents/Codex/2026-08-30/referenced-chatgpt-conversation-this-is-an/outputs/aichessathon-starter/tests/autoloop/test_policy.py'}}, {'tool_name': 'Read', 'tool_use_id': 'toolu_014QJLD2LdZxab8mPpjBpxcW', 'tool_input': {'file_path': '/Users/phantomvenom/Documents/Codex/2026-08-30/referenced-chatgpt-conversation-this-is-an/outputs/aichessathon-starter/agent.py', 'offset': 20, 'limit': 25}}]",
+  "generator": "claude-code",
+  "id": "exp-0061",
+  "protected_hash": "09c4258fe6c7293112808158095682acb37029f052c0c11fd04e14a87141ad70",
+  "schema_version": 1,
+  "started_at": "2026-09-03T11:45:24.109923+00:00",
+  "status": "failed"
+}
