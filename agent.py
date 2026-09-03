@@ -58,10 +58,13 @@ def _model_evaluate(board: chess.Board) -> float:
     endgame = 0.0
     phase = 0
     mobility = 0.0
+    material_diff = 0.0
     for colour, sign in ((side, 1.0), (not side, -1.0)):
         for piece_type in range(chess.PAWN, chess.KING + 1):
             squares = board.pieces(piece_type, colour)
             phase += PHASE_VALUES[piece_type] * len(squares)
+            if piece_type != chess.KING:
+                material_diff += sign * SEE_VALUES[piece_type] * len(squares)
             offset = (piece_type - 1) * 64
             for square in squares:
                 relative = square if colour == chess.WHITE else chess.square_mirror(square)
@@ -84,6 +87,19 @@ def _model_evaluate(board: chess.Board) -> float:
         score += WEIGHTS[CASTLING_OFFSET + 1]
     if board.has_queenside_castling_rights(not side):
         score -= WEIGHTS[CASTLING_OFFSET + 1]
+
+    # Halfmove-clock progress gradient for reduced-material, materially decided
+    # endgames. The trained model has no move-counter feature, so a king or
+    # piece shuffled between two squares evaluates identically to a real
+    # converting move. When phase is low (both sides near a queen / rook+minor
+    # or less) and one side is clearly ahead (>= a clean minor), penalise the
+    # side that is ahead as the 50-move counter climbs (max 80 * 0.35 ~= 28
+    # units, below a pawn and far below any mate score) so alpha-beta prefers
+    # clock-resetting pawn moves, captures and trades over aimless shuffling,
+    # and symmetrically lets the losing side steer toward the 50-move draw.
+    if phase <= 10 and abs(material_diff) >= 300.0:
+        pull = min(board.halfmove_clock, 80) * 0.35
+        score -= math.copysign(pull, material_diff)
     return BIAS + score
 
 
