@@ -41,6 +41,13 @@ LMR_QUIET_INDEX = 4
 # the search gains a monotone reason to prefer active moves over shuffling.
 MOBILITY_WEIGHT = 3.0
 SEE_VALUES = (0, 100, 320, 330, 500, 900, 20_000)
+# Flat classical pawn-structure penalties (centipawns). The trained model is
+# piece-square only and has no pawn-structure term, so this adds the largest
+# missing classical component while staying far below a minor piece: a realistic
+# worst case (two doubled-extra pawns plus three isolated pawns) is under 0.8
+# pawn. Kept flat with no phase scaling so the mechanism is tested cleanly.
+DOUBLED_PENALTY = 12.0
+ISOLATED_PENALTY = 14.0
 
 _deadline = math.inf
 _nodes = 0
@@ -58,7 +65,9 @@ def _model_evaluate(board: chess.Board) -> float:
     endgame = 0.0
     phase = 0
     mobility = 0.0
+    structure = 0.0
     for colour, sign in ((side, 1.0), (not side, -1.0)):
+        pawn_files = [0, 0, 0, 0, 0, 0, 0, 0]
         for piece_type in range(chess.PAWN, chess.KING + 1):
             squares = board.pieces(piece_type, colour)
             phase += PHASE_VALUES[piece_type] * len(squares)
@@ -67,15 +76,32 @@ def _model_evaluate(board: chess.Board) -> float:
                 relative = square if colour == chess.WHITE else chess.square_mirror(square)
                 midgame += sign * WEIGHTS[offset + relative]
                 endgame += sign * WEIGHTS[ENDGAME_OFFSET + offset + relative]
+                if piece_type == chess.PAWN:
+                    # Cheap per-file tally reusing the square iteration already
+                    # happening for the piece-square lookup.
+                    pawn_files[chess.square_file(square)] += 1
                 if piece_type != chess.KING:
                     # attacks_mask returns a plain int bitboard, so this adds no
                     # per-leaf object allocation and reuses the piece loop rather
                     # than generating moves a second time.
                     mobility += sign * chess.popcount(board.attacks_mask(square))
 
+        doubled_extra = sum(count - 1 for count in pawn_files if count > 1)
+        isolated = sum(
+            count
+            for f, count in enumerate(pawn_files)
+            if count > 0
+            and (f == 0 or pawn_files[f - 1] == 0)
+            and (f == 7 or pawn_files[f + 1] == 0)
+        )
+        structure += sign * (
+            -DOUBLED_PENALTY * doubled_extra - ISOLATED_PENALTY * isolated
+        )
+
     blend = min(1.0, phase / MAX_PHASE)
     score = blend * midgame + (1.0 - blend) * endgame
     score += MOBILITY_WEIGHT * mobility
+    score += structure
     if board.has_kingside_castling_rights(side):
         score += WEIGHTS[CASTLING_OFFSET]
     if board.has_kingside_castling_rights(not side):
