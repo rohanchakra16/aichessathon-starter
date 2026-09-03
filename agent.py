@@ -36,6 +36,7 @@ TT_UPPER = 2
 LMR_MIN_DEPTH = 3
 LMR_QUIET_INDEX = 4
 SEE_VALUES = (0, 100, 320, 330, 500, 900, 20_000)
+ASPIRATION_MARGIN = 75.0
 
 _deadline = math.inf
 _nodes = 0
@@ -281,25 +282,32 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
     return best
 
 
-def _root_search(board: chess.Board, depth: int, previous: chess.Move) -> chess.Move:
+def _root_search(
+    board: chess.Board,
+    depth: int,
+    previous: chess.Move,
+    alpha: float = -math.inf,
+    beta: float = math.inf,
+) -> tuple[chess.Move, float]:
     best_move = previous
     best_score = -math.inf
-    alpha = -math.inf
     for move_index, move in enumerate(_ordered_moves(board, previous)):
         _check_time()
         board.push(move)
         if move_index == 0:
-            score = -_negamax(board, depth - 1, -math.inf, math.inf)
+            score = -_negamax(board, depth - 1, -beta, -alpha)
         else:
             score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha)
-            if score > alpha:
-                score = -_negamax(board, depth - 1, -math.inf, -alpha)
+            if alpha < score < beta:
+                score = -_negamax(board, depth - 1, -beta, -alpha)
         board.pop()
         if score > best_score:
             best_score = score
             best_move = move
         alpha = max(alpha, score)
-    return best_move
+        if alpha >= beta:
+            break
+    return best_move, best_score
 
 
 def _budget_seconds(time_left_ms: int) -> float:
@@ -325,12 +333,21 @@ def get_move(fen: str, time_left_ms: int) -> str:
 
     _deadline = time.monotonic() + budget
     _nodes = 0
+    previous_score = 0.0
     for depth in range(1, MAX_DEPTH + 1):
         try:
-            completed = _root_search(board, depth, best)
+            if depth == 1:
+                completed, score = _root_search(board, depth, best)
+            else:
+                alpha = previous_score - ASPIRATION_MARGIN
+                beta = previous_score + ASPIRATION_MARGIN
+                completed, score = _root_search(board, depth, best, alpha, beta)
+                if score <= alpha or score >= beta:
+                    completed, score = _root_search(board, depth, completed)
         except SearchTimeout:
             break
         best = completed
+        previous_score = score
         if time.monotonic() >= _deadline:
             break
     return best.uci()
