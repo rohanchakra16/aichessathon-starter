@@ -172,6 +172,21 @@ def _ordered_moves(
     return sorted(moves, key=priority, reverse=True)
 
 
+def _forced_draw(board: chess.Board) -> bool:
+    """Cheap detection of drawn positions the search should score as equal.
+
+    Replaces ``board.outcome(claim_draw=True)``, whose threefold-claim probe
+    regenerates and plays every legal move at every node. Checking the halfmove
+    clock, insufficient material, and an actual repetition covers the same draws
+    the search needs while leaving far more time for deeper iterations.
+    """
+    return (
+        board.halfmove_clock >= 100
+        or board.is_repetition(3)
+        or board.is_insufficient_material()
+    )
+
+
 def _check_time() -> None:
     global _nodes
     _nodes += 1
@@ -182,15 +197,15 @@ def _check_time() -> None:
 def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> float:
     """Resolve short capture sequences before applying the learned evaluator."""
     _check_time()
-    outcome = board.outcome(claim_draw=True)
-    if outcome is not None:
-        if outcome.winner is None:
-            return 0.0
-        return MATE if outcome.winner == board.turn else -MATE
-    if depth == 0:
-        return _model_evaluate(board)
+    if _forced_draw(board):
+        return 0.0
 
     in_check = board.is_check()
+    if depth == 0:
+        if in_check and not any(board.generate_legal_moves()):
+            return -MATE
+        return _model_evaluate(board)
+
     if not in_check:
         stand_pat = _model_evaluate(board)
         if stand_pat >= beta:
@@ -203,7 +218,7 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
         prune_losing_captures=not in_check,
     )
     if not moves:
-        return _model_evaluate(board)
+        return -MATE if in_check else _model_evaluate(board)
 
     best = -math.inf if in_check else alpha
     for move in moves:
@@ -219,11 +234,8 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
 
 def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float:
     _check_time()
-    outcome = board.outcome(claim_draw=True)
-    if outcome is not None:
-        if outcome.winner is None:
-            return 0.0
-        return MATE if outcome.winner == board.turn else -MATE
+    if _forced_draw(board):
+        return 0.0
     if depth == 0:
         return _quiescence(board, alpha, beta, QUIESCENCE_DEPTH)
 
@@ -243,7 +255,10 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
             return cached_score
     best = -math.inf
     in_check = board.is_check()
-    for move_index, move in enumerate(_ordered_moves(board)):
+    moves = _ordered_moves(board)
+    if not moves:
+        return -MATE if in_check else 0.0
+    for move_index, move in enumerate(moves):
         reduce_quiet = (
             depth >= LMR_MIN_DEPTH
             and move_index >= LMR_QUIET_INDEX
