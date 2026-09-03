@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "completed_at": "2026-09-03T21:15:51.821455+00:00",
+  "after_experiment": null,
+  "batch_experiments": [],
+  "champion_commit": "e9da1e556cd43d0045d4733e9dd313512ab128f4",
+  "promotion_in_batch": false,
+  "decision": "CONTINUE",
+  "stop_condition": null,
+  "streak_assessment": "12 consecutive scientific non-improvements in the search/move-ordering/quiescence family (exp-0076 through exp-0087) confirm that direction is saturated, but leaf-evaluation richness is untested and evidence-grounded, so overall research is not yet exhausted.",
+  "recurring_failure_modes": [
+    "High threefold-repetition draw rate (34/64 = 53% in exp-0087) including games where one side shuffles a piece for many plies in non-level-looking, non-drawn middlegames",
+    "Flat PSQT-only evaluation gives no gradient distinguishing active/expanding moves from passive shuffles once no immediate tactic is present",
+    "Twelve consecutive search-mechanism experiments (ordering, pruning, extensions, TT reuse, timing, key representation) produced zero measurable strength change, consistent with the bottleneck being evaluator richness rather than search depth or move ordering"
+  ],
+  "next_direction": {
+    "title": "Cheap mobility differential added to leaf evaluation",
+    "family": "leaf-evaluation",
+    "hypothesis": "Adding a small fixed-coefficient legal-mobility differential (side-to-move legal/pseudo-legal move count minus opponent's) to the learned PSQT score gives the search a non-zero gradient favoring active, space-gaining moves over passive shuffles, reducing the repetition-draw rate seen in exp-0087's retained games without requiring retraining.",
+    "rationale": "agent.py's _model_evaluate has no mobility, pawn-structure, or piece-activity term of any kind; the only prior positional-feature attempt (six-feature king-safety residual) tested a different, mechanistically unrelated signal and is not evidence against mobility. exp-0087's PGNs show repeated multi-ply piece shuffles ending in threefold repetition from non-trivial middlegame positions, the textbook symptom of an evaluator that can't tell 'improving' from 'idle' once tactics run out.",
+    "guardrails": "Compute mobility via reused/cheap move data, not a second full legal-move generation per leaf (leaf eval runs at every quiescence node/stand-pat, so an extra board.legal_moves() call would roughly double node cost there); prefer pseudo-legal attack-bitboard popcounts or reusing the move list already generated one ply up. Keep the coefficient small and fixed so the trained 770-weight model still dominates the score (must keep minimum_strength_score >= 0.625 against the model-ablated baseline) while still producing >= minimum_move_differences (8) divergent moves under the model-ablation gate. Must not push single-move time over the 0.75s/2.25s reliability ceiling; verify with local NPS profiling before committing to the arena."
+  },
+  "audit_summary": "The champion (exp-0066) has now fended off 12 consecutive search/ordering candidates spanning every mechanism in that family, and the handoff's own registry confirms that family is exhausted in tested form. The champion's evaluator, however, is a bare tapered PSQT with zero positional features beyond castling rights, and this batch's retained games show a 53% repetition-draw rate consistent with that gap. The next experiment should pivot to leaf-evaluation richness via a cheap mobility differential, a materially different, code-and-evidence-grounded direction that keeps the trained model dominant while giving the search a reason to avoid shuffling.",
+  "claude": {
+    "session_id": "23bfb72e-33ca-4866-802a-f78980838ccf",
+    "model": {
+      "claude-haiku-4-5-20251001": {
+        "inputTokens": 2909,
+        "outputTokens": 16,
+        "cacheReadInputTokens": 0,
+        "cacheCreationInputTokens": 0,
+        "webSearchRequests": 0,
+        "costUSD": 0.0029890000000000003,
+        "contextWindow": 200000,
+        "maxOutputTokens": 32000,
+        "canonicalModel": "claude-haiku-4-5",
+        "provider": "firstParty"
+      },
+      "claude-sonnet-5": {
+        "inputTokens": 18,
+        "outputTokens": 7189,
+        "cacheReadInputTokens": 341242,
+        "cacheCreationInputTokens": 61835,
+        "webSearchRequests": 0,
+        "costUSD": 0.5812716,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 64000,
+        "canonicalModel": "claude-sonnet-5",
+        "provider": "firstParty"
+      }
+    },
+    "total_cost_usd": 0.5842606,
+    "num_turns": 14
+  },
+  "full_result_text": "## Evidence audit \u2014 exp-0087 and champion state\n\n**Champion (`agent.py`):** leaf evaluation is exclusively a tapered piece-square model (770 learned weights: 6 piece types \u00d7 64 squares \u00d7 {midgame, endgame} + 2 castling terms), blended by a material-phase counter. There is no mobility, pawn-structure, bishop-pair, rook-open-file, or any non-linear positional term anywhere in `_model_evaluate`. The only positional-feature experiment ever run (six-feature linear king-safety residual) tested king-zone/pawn-shield features specifically and found no offline signal \u2014 it never touched mobility or space, which is a mechanistically distinct signal (legal/pseudo-legal move-count differential, not king-zone attack pattern).\n\n**exp-0087 (packed-integer move-ordering key vs UCI-string, inconclusive, 15-34-15, 50.0%):** consistent with 11 prior search/ordering candidates \u2014 no signal, confirming move-ordering-key micro-optimization joins the exhausted list. This closes the numeric-microopt sub-family Claude proposed to test after exp-0083 speculated on wasted allocation.\n\n**Recurring failure mode across exp-0087's retained games:** 34 of 64 games (53%) ended in a draw, and the overwhelming majority of those were threefold repetition, not insufficient material \u2014 including games with clearly asymmetric, non-drawn-looking middlegames (e.g. the Nimzo-Indian game repeating Bg5\u2013Bh6 for 6+ plies at move 20+, the Caro-Kann game repeating Re5\u2013Re4/Nf6\u2013Ng8 shuffles, the Sicilian game repeating Nc3\u2013Nce2/Bc2\u2013Bd1). This pattern recurs across the registry (it was already flagged as a target failure mode at the structural-pivot audit after exp-0050) and is the natural signature of a flat, PSQT-only evaluation: once no immediate capture, check, or square-occupancy change is available, many \"shuffle\" moves score identically, so the search has no gradient pushing toward active, space-gaining continuations and drifts into repetition instead of probing for progress. This is a leaf-evaluation richness gap, not a search-depth or move-ordering gap \u2014 12 consecutive search/ordering-family experiments (0076\u20130087) failed to move the needle on it, which is exactly what you'd expect if the bottleneck is what the evaluator can see, not how the tree is searched.\n\n## Saturation judgment\n\nThe search/move-ordering/quiescence/time-management direction is saturated: 12 consecutive scientifically-completed non-improvements (0076\u20130087, one rejection at 0083) spanning move ordering, null-move pruning, check extensions, mate-distance scoring, aspiration windows, TT reuse, timeout handling, and now move-ordering-key representation, with every mechanism in that family now exhausted per the handoff's own table. But the stop rule requires *no materially different, well-motivated experiment anywhere*, and leaf-evaluation richness \u2014 specifically mobility, which was never tested \u2014 is such a direction, grounded directly in the champion's code (feature absent) and in this batch's retained evidence (repetition draws in non-drawn positions).\n\n<AUDIT_DECISION>\n{\n  \"decision\": \"CONTINUE\",\n  \"stop_condition\": null,\n  \"streak_assessment\": \"12 consecutive scientific non-improvements in the search/move-ordering/quiescence family (exp-0076 through exp-0087) confirm that direction is saturated, but leaf-evaluation richness is untested and evidence-grounded, so overall research is not yet exhausted.\",\n  \"recurring_failure_modes\": [\n    \"High threefold-repetition draw rate (34/64 = 53% in exp-0087) including games where one side shuffles a piece for many plies in non-level-looking, non-drawn middlegames\",\n    \"Flat PSQT-only evaluation gives no gradient distinguishing active/expanding moves from passive shuffles once no immediate tactic is present\",\n    \"Twelve consecutive search-mechanism experiments (ordering, pruning, extensions, TT reuse, timing, key representation) produced zero measurable strength change, consistent with the bottleneck being evaluator richness rather than search depth or move ordering\"\n  ],\n  \"next_direction\": {\n    \"title\": \"Cheap mobility differential added to leaf evaluation\",\n    \"family\": \"leaf-evaluation\",\n    \"hypothesis\": \"Adding a small fixed-coefficient legal-mobility differential (side-to-move legal/pseudo-legal move count minus opponent's) to the learned PSQT score gives the search a non-zero gradient favoring active, space-gaining moves over passive shuffles, reducing the repetition-draw rate seen in exp-0087's retained games without requiring retraining.\",\n    \"rationale\": \"agent.py's _model_evaluate has no mobility, pawn-structure, or piece-activity term of any kind; the only prior positional-feature attempt (six-feature king-safety residual) tested a different, mechanistically unrelated signal and is not evidence against mobility. exp-0087's PGNs show repeated multi-ply piece shuffles ending in threefold repetition from non-trivial middlegame positions, the textbook symptom of an evaluator that can't tell 'improving' from 'idle' once tactics run out.\",\n    \"guardrails\": \"Compute mobility via reused/cheap move data, not a second full legal-move generation per leaf (leaf eval runs at every quiescence node/stand-pat, so an extra board.legal_moves() call would roughly double node cost there); prefer pseudo-legal attack-bitboard popcounts or reusing the move list already generated one ply up. Keep the coefficient small and fixed so the trained 770-weight model still dominates the score (must keep minimum_strength_score >= 0.625 against the model-ablated baseline) while still producing >= minimum_move_differences (8) divergent moves under the model-ablation gate. Must not push single-move time over the 0.75s/2.25s reliability ceiling; verify with local NPS profiling before committing to the arena.\"\n  },\n  \"audit_summary\": \"The champion (exp-0066) has now fended off 12 consecutive search/ordering candidates spanning every mechanism in that family, and the handoff's own registry confirms that family is exhausted in tested form. The champion's evaluator, however, is a bare tapered PSQT with zero positional features beyond castling rights, and this batch's retained games show a 53% repetition-draw rate consistent with that gap. The next experiment should pivot to leaf-evaluation richness via a cheap mobility differential, a materially different, code-and-evidence-grounded direction that keeps the trained model dominant while giving the search a reason to avoid shuffling.\"\n}\n</AUDIT_DECISION>"
+}
