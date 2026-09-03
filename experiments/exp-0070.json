@@ -1,0 +1,343 @@
+{
+  "arena": {
+    "passed": false,
+    "skipped": true
+  },
+  "branch": "autoloop/candidate-0070",
+  "candidate_commit": "3861d19a4d21aa2bef9e888f70c4f6938a604e43",
+  "ci": {
+    "ablation_setup": {
+      "model_path": "weights/model.json",
+      "weights_zeroed": 770
+    },
+    "duration_seconds": 22.735,
+    "environment": {
+      "cpu_max": "100000 100000",
+      "cpu_quota_cores": 1.0,
+      "image_id": "sha256:64e9898c986094bd53b0a50c7f2d71f53bbf26623172a65d06282af21b1a8e37",
+      "memory_limit_bytes": 2147483648,
+      "memory_max": "2147483648",
+      "network_disabled": true,
+      "network_probe_errno": 101,
+      "passed": true,
+      "pids_limit": 128,
+      "pids_max": "128",
+      "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.36",
+      "problems": [],
+      "python": "3.12.11",
+      "tmp_limit_bytes": 268435456,
+      "tmp_writable": true,
+      "workspace_read_only": true
+    },
+    "mode": "candidate",
+    "model_move_ablation": {
+      "comparisons": [
+        {
+          "ablated": "f3g5",
+          "candidate": "b2b3",
+          "opening": "open-game"
+        },
+        {
+          "ablated": "g1h3",
+          "candidate": "d1a4",
+          "opening": "queens-gambit"
+        },
+        {
+          "ablated": "c3d5",
+          "candidate": "f2f3",
+          "opening": "english"
+        },
+        {
+          "ablated": "f3g5",
+          "candidate": "b2b3",
+          "opening": "reti"
+        },
+        {
+          "ablated": "f3g5",
+          "candidate": "b2b3",
+          "opening": "sicilian"
+        },
+        {
+          "ablated": "g1h3",
+          "candidate": "f1b5",
+          "opening": "french"
+        },
+        {
+          "ablated": "g1h3",
+          "candidate": "b2b3",
+          "opening": "kings-indian"
+        },
+        {
+          "ablated": "g1h3",
+          "candidate": "c1g5",
+          "opening": "caro-kann"
+        },
+        {
+          "ablated": "g1h3",
+          "candidate": "b1c3",
+          "opening": "scandinavian"
+        },
+        {
+          "ablated": "c3d5",
+          "candidate": "f2f3",
+          "opening": "pirc"
+        },
+        {
+          "ablated": "g2b7",
+          "candidate": "c1g5",
+          "opening": "dutch"
+        },
+        {
+          "ablated": "g1h3",
+          "candidate": "c1g5",
+          "opening": "nimzo-indian"
+        },
+        {
+          "ablated": "f3g5",
+          "candidate": "c1g5",
+          "opening": "slav"
+        },
+        {
+          "ablated": "f3g5",
+          "candidate": "b2b3",
+          "opening": "petroff"
+        },
+        {
+          "ablated": "g1h3",
+          "candidate": "f1b5",
+          "opening": "alekhine"
+        },
+        {
+          "ablated": "f3g5",
+          "candidate": "d2d3",
+          "opening": "four-knights"
+        },
+        {
+          "ablated": "c3d5",
+          "candidate": "d1a4",
+          "opening": "grunfeld"
+        },
+        {
+          "ablated": "f3g5",
+          "candidate": "c1g5",
+          "opening": "queens-indian"
+        },
+        {
+          "ablated": "g1h3",
+          "candidate": "c1g5",
+          "opening": "benoni"
+        },
+        {
+          "ablated": "g1h3",
+          "candidate": "d1a4",
+          "opening": "catalan"
+        },
+        {
+          "ablated": "f4c7",
+          "candidate": "f4g5",
+          "opening": "london"
+        },
+        {
+          "ablated": "h8g8",
+          "candidate": "b7b6",
+          "opening": "trompowsky"
+        },
+        {
+          "ablated": "f3g5",
+          "candidate": "b2b3",
+          "opening": "bird"
+        },
+        {
+          "ablated": "g1h3",
+          "candidate": "d1h5",
+          "opening": "kings-gambit"
+        },
+        {
+          "ablated": "g8e7",
+          "candidate": "c6b4",
+          "opening": "evans-gambit"
+        },
+        {
+          "ablated": "c4f7",
+          "candidate": "d1e2",
+          "opening": "italian"
+        },
+        {
+          "ablated": "b5c6",
+          "candidate": "b5c6",
+          "opening": "ruy-lopez"
+        },
+        {
+          "ablated": "f3g5",
+          "candidate": "d4e5",
+          "opening": "philidor"
+        },
+        {
+          "ablated": "d4e6",
+          "candidate": "d4c6",
+          "opening": "accelerated-dragon"
+        },
+        {
+          "ablated": "d4e6",
+          "candidate": "d4b5",
+          "opening": "scheveningen"
+        },
+        {
+          "ablated": "c3d5",
+          "candidate": "e4e5",
+          "opening": "classical-french"
+        },
+        {
+          "ablated": "g1h3",
+          "candidate": "c1g5",
+          "opening": "advance-caro"
+        }
+      ],
+      "differences": 31,
+      "failures": [],
+      "minimum_differences": 8,
+      "passed": true,
+      "positions": 32
+    },
+    "mypy": {
+      "command": [
+        "mypy"
+      ],
+      "duration_seconds": 2.247,
+      "passed": true,
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "Success: no issues found in 9 source files\n"
+    },
+    "package": {
+      "compressed_bytes": 13171,
+      "expanded_bytes": 33829,
+      "members": [
+        "agent.py",
+        "weights/model.json"
+      ],
+      "sha256": "7b7a800f9e5b05c4fe69f13c1f5205edddd68c2b802e354df8bf631c86caf4a8"
+    },
+    "package_problems": [],
+    "packaged_files": [
+      "agent.py",
+      "weights/model.json"
+    ],
+    "passed": false,
+    "policy_tests": {
+      "command": [
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/autoloop"
+      ],
+      "duration_seconds": 1.963,
+      "passed": false,
+      "returncode": 1,
+      "stderr": "",
+      "stdout": "...........................................F......................       [100%]\n=================================== FAILURES ===================================\n__ test_generator_schedule_uses_claude_for_every_candidate_turn_after_handoff __\n\n    def test_generator_schedule_uses_claude_for_every_candidate_turn_after_handoff() -> None:\n        current = policy()\n        expected = {\n            0: \"claude-code\",\n            1: \"claude-code\",\n            2: \"claude-code\",\n            3: \"claude-code\",\n            4: \"claude-code\",\n            5: \"claude-code\",\n            6: \"claude-code\",\n        }\n>       assert {\n            count: controller.generator_for_stall_count(count, current)\n            for count in expected\n        } == expected\nE       AssertionError: assert {0: 'codex', ...de-code', ...} == {0: 'claude-c...de-code', ...}\nE         \nE         Omitting 2 identical items, use -vv to show\nE         Differing items:\nE         {0: 'codex'} != {0: 'claude-code'}\nE         {1: 'codex'} != {1: 'claude-code'}\nE         {2: 'codex'} != {2: 'claude-code'}\nE         {4: 'codex'} != {4: 'claude-code'}\nE         {5: 'codex'} != {5: 'claude-code'}\nE         Use -v to get more diff\n\ntests/autoloop/test_policy.py:157: AssertionError\n=========================== short test summary info ============================\nFAILED tests/autoloop/test_policy.py::test_generator_schedule_uses_claude_for_every_candidate_turn_after_handoff\n1 failed, 65 passed in 1.39s\n"
+    },
+    "resources": {
+      "memory_current_bytes": 28819456,
+      "memory_limit_bytes": 2147483648,
+      "memory_peak_bytes": 120868864,
+      "passed": true
+    },
+    "ruff": {
+      "command": [
+        "ruff",
+        "check",
+        "."
+      ],
+      "duration_seconds": 0.029,
+      "passed": true,
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "All checks passed!\n"
+    },
+    "schema_version": 2,
+    "smoke": {
+      "failures": [],
+      "outcomes": [
+        {
+          "result": "white",
+          "termination": "checkmate"
+        },
+        {
+          "result": "black",
+          "termination": "checkmate"
+        }
+      ],
+      "passed": true
+    },
+    "started_at_epoch": 1788454673.2555728,
+    "static_problems": [],
+    "stress": {
+      "failures": [],
+      "init_seconds": 0.218561,
+      "max_move_seconds": 0.642773,
+      "passed": true,
+      "positions_checked": 6,
+      "timings": [
+        {
+          "clock_ms": 1,
+          "elapsed_seconds": 0.00025345400000276186,
+          "limit_seconds": 0.75
+        },
+        {
+          "clock_ms": 25,
+          "elapsed_seconds": 0.0028217220000072984,
+          "limit_seconds": 0.75
+        },
+        {
+          "clock_ms": 100,
+          "elapsed_seconds": 0.005426567999990084,
+          "limit_seconds": 0.75
+        },
+        {
+          "clock_ms": 1000,
+          "elapsed_seconds": 0.04381423499999926,
+          "limit_seconds": 0.75
+        },
+        {
+          "clock_ms": 120000,
+          "elapsed_seconds": 0.6427730529999991,
+          "limit_seconds": 2.25
+        },
+        {
+          "clock_ms": 100,
+          "elapsed_seconds": 0.005516867000011416,
+          "limit_seconds": 0.75
+        }
+      ]
+    }
+  },
+  "completed_at": "2026-09-03T16:58:23.850334+00:00",
+  "consecutive_non_improvements": 3,
+  "decision_reason": "protected compliance/correctness evaluation failed",
+  "generator": "claude-code",
+  "generator_models": [
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-5"
+  ],
+  "generator_prompt_sha256": "9bd20f3c8fa9071701bf7ebe254a4cc1e41be4e7958ff9c6c54a874466f8e182",
+  "generator_summary": "HYPOTHESIS: Ordering quiet moves that previously produced beta cutoffs at the same ply ahead of other quiet moves will sharpen alpha-beta pruning and let iterative deepening reach greater depth within the same clock budget, improving playing strength.",
+  "generator_usage": {
+    "duration_ms": 104266,
+    "num_turns": 14,
+    "total_cost_usd": 0.34857279999999996
+  },
+  "generator_version": "2.1.236 (Claude Code)",
+  "id": "exp-0070",
+  "protected_hash": "91d606c177e14cf1c641aced07f16a18d92f62de19345460963de7c8ccaac181",
+  "schema_version": 1,
+  "started_at": "2026-09-03T16:55:38.070443+00:00",
+  "status": "rejected",
+  "workflow": {
+    "run_id": 33781701957,
+    "run_url": "https://github.com/rohanchakra16/aichessathon-starter/actions/runs/33781701957",
+    "wait_seconds": 58.735,
+    "workflow_conclusion": "failure"
+  }
+}
