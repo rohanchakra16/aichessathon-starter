@@ -285,20 +285,31 @@ def _root_search(board: chess.Board, depth: int, previous: chess.Move) -> chess.
     best_move = previous
     best_score = -math.inf
     alpha = -math.inf
-    for move_index, move in enumerate(_ordered_moves(board, previous)):
-        _check_time()
-        board.push(move)
-        if move_index == 0:
-            score = -_negamax(board, depth - 1, -math.inf, math.inf)
-        else:
-            score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha)
-            if score > alpha:
-                score = -_negamax(board, depth - 1, -math.inf, -alpha)
-        board.pop()
-        if score > best_score:
-            best_score = score
-            best_move = move
-        alpha = max(alpha, score)
+    completed = 0
+    try:
+        for move_index, move in enumerate(_ordered_moves(board, previous)):
+            _check_time()
+            board.push(move)
+            try:
+                if move_index == 0:
+                    score = -_negamax(board, depth - 1, -math.inf, math.inf)
+                else:
+                    score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha)
+                    if score > alpha:
+                        score = -_negamax(board, depth - 1, -math.inf, -alpha)
+            finally:
+                board.pop()
+            completed += 1
+            if score > best_score:
+                best_score = score
+                best_move = move
+            alpha = max(alpha, score)
+    except SearchTimeout:
+        # Salvage a fully searched deeper move: every recorded score comes from a
+        # completed negamax call, so the current best is backed by a search to
+        # `depth`. Only re-raise if nothing at this depth finished.
+        if completed == 0:
+            raise
     return best_move
 
 
