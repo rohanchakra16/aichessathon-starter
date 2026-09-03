@@ -5,8 +5,8 @@
   "ci_timeout_seconds": 1200,
   "release_timeout_seconds": 2400,
   "candidate_generators": {
-    "primary": "codex-exec",
-    "secondary": "claude-code",
+    "primary": "claude-code",
+    "secondary": "codex-exec",
     "secondary_after_non_improvements": 3,
     "secondary_cadence": 3,
     "recent_experiment_limit": 12,

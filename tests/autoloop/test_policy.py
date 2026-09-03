@@ -143,16 +143,16 @@ def test_workflow_queries_are_pinned_to_user_fork() -> None:
     assert policy()["github_repository"] == "rohanchakra16/aichessathon-starter"
 
 
-def test_generator_schedule_uses_claude_only_at_stalled_cadence() -> None:
+def test_generator_schedule_uses_claude_for_most_candidate_turns() -> None:
     current = policy()
     expected = {
-        0: "codex-exec",
-        1: "codex-exec",
-        2: "codex-exec",
-        3: "claude-code",
-        4: "codex-exec",
-        5: "codex-exec",
-        6: "claude-code",
+        0: "claude-code",
+        1: "claude-code",
+        2: "claude-code",
+        3: "codex-exec",
+        4: "claude-code",
+        5: "claude-code",
+        6: "codex-exec",
     }
     assert {
         count: controller.generator_for_stall_count(count, current)
@@ -209,6 +209,13 @@ def test_generator_summary_is_single_line_and_bounded() -> None:
     summary = controller.bounded_generator_summary("  first\nsecond  " * 100, 40)
     assert "\n" not in summary
     assert len(summary) == 40
+
+
+def test_generator_summary_prefers_hypothesis_marker() -> None:
+    summary = controller.bounded_generator_summary(
+        "long preamble " * 100 + "HYPOTHESIS: focused mechanism"
+    )
+    assert summary == "HYPOTHESIS: focused mechanism"
 
 
 def test_status_parser_preserves_first_filename_character() -> None:

@@ -1,0 +1,36 @@
+{
+  "artifact_sha256": "e46046749bf41c13da3328e7029897907a12f0a9e91e0afa950faa2a5f654095",
+  "champion_commit": "1b07bbed0a5837a115f47c4546c760ad8ab88183",
+  "dashboard_hash_prefix": "e46046749bf4",
+  "dashboard_status": "Active",
+  "expanded_bytes": 32144,
+  "platform": "AI Chessathon",
+  "platform_image_digest": "sha256:5557d9cc62254b3d0e143f295448b6520893f7921527c03cefe3905ef811847d",
+  "release_record": "releases/22a213b634f0-33696871619.json",
+  "schema_version": 1,
+  "smoke_games": [
+    {
+      "colour": "white",
+      "plies": 20,
+      "result": "white",
+      "termination": "adjudication"
+    },
+    {
+      "colour": "black",
+      "plies": 20,
+      "result": "black",
+      "termination": "adjudication"
+    }
+  ],
+  "status": "valid",
+  "team": "Phantom",
+  "upload_count_today_after": 1,
+  "uploaded_at": "2026-09-03T11:25:04Z",
+  "validated_at": "2026-09-03T11:25:36Z",
+  "version": 2,
+  "zip_compressed_bytes": 12578,
+  "zip_members": [
+    "agent.py",
+    "weights/model.json"
+  ]
+}

@@ -188,7 +188,11 @@ def experiment_digest(records: list[dict[str, Any]]) -> str:
 
 def bounded_generator_summary(value: Any, limit: int = 600) -> str:
     """Keep a concise, journal-safe generator explanation for later coordination."""
-    return " ".join(str(value or "").split())[:limit]
+    summary = " ".join(str(value or "").split())
+    marker = summary.rfind("HYPOTHESIS:")
+    if marker >= 0:
+        summary = summary[marker:]
+    return summary[:limit]
 
 
 def candidate_prompt(
