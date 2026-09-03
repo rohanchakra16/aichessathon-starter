@@ -39,7 +39,9 @@ SEE_VALUES = (0, 100, 320, 330, 500, 900, 20_000)
 
 _deadline = math.inf
 _nodes = 0
-_tt: dict[tuple[object, int, int], tuple[float, int]] = {}
+_tt: dict[
+    tuple[object, int], tuple[float, int, int, chess.Move | None]
+] = {}
 
 
 class SearchTimeout(Exception):
@@ -241,10 +243,11 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
 
     alpha_original = alpha
     beta_original = beta
-    key = (board._transposition_key(), board.halfmove_clock, depth)
+    key = (board._transposition_key(), board.halfmove_clock)
     cached = _tt.get(key)
-    if cached is not None:
-        cached_score, flag = cached
+    principal = cached[3] if cached is not None else None
+    if cached is not None and cached[1] >= depth:
+        cached_score, _, flag, _ = cached
         if flag == TT_EXACT:
             return cached_score
         if flag == TT_LOWER:
@@ -255,9 +258,10 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
             return cached_score
     best = -math.inf
     in_check = board.is_check()
-    moves = _ordered_moves(board)
+    moves = _ordered_moves(board, principal)
     if not moves:
         return -MATE if in_check else 0.0
+    best_move: chess.Move | None = None
     for move_index, move in enumerate(moves):
         reduce_quiet = (
             depth >= LMR_MIN_DEPTH
@@ -281,6 +285,7 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
         board.pop()
         if score > best:
             best = score
+            best_move = move
         if score > alpha:
             alpha = score
         if alpha >= beta:
@@ -292,7 +297,10 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
         flag = TT_UPPER
     elif best >= beta_original:
         flag = TT_LOWER
-    _tt[key] = (best, flag)
+    # Prefer the deepest result so reduced or later shallow searches cannot
+    # discard a stronger principal-move hint.
+    if cached is None or depth >= cached[1]:
+        _tt[key] = (best, depth, flag, best_move)
     return best
 
 
