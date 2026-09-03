@@ -143,16 +143,16 @@ def test_workflow_queries_are_pinned_to_user_fork() -> None:
     assert policy()["github_repository"] == "rohanchakra16/aichessathon-starter"
 
 
-def test_generator_schedule_uses_claude_for_most_candidate_turns() -> None:
+def test_generator_schedule_uses_claude_for_every_candidate_turn_after_handoff() -> None:
     current = policy()
     expected = {
         0: "claude-code",
         1: "claude-code",
         2: "claude-code",
-        3: "codex-exec",
+        3: "claude-code",
         4: "claude-code",
         5: "claude-code",
-        6: "codex-exec",
+        6: "claude-code",
     }
     assert {
         count: controller.generator_for_stall_count(count, current)

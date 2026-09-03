@@ -1267,6 +1267,7 @@
   "decision_reason": "sequential paired arena remained inconclusive (score 0.516, interval [0.443, 0.587])",
   "generator": "resumed-candidate",
   "id": "exp-0069",
+  "hypothesis": "Restoring exact stalemate scoring at quiescence leaves would preserve exp-0066's terminal-check speed gain without mis-evaluating a drawn terminal position.",
   "protected_hash": "db45d43ab38126f8d707019b93c1c80b0d0049604ce2060cdbb11bcfe7fb20d8",
   "resumed_after_interruption": true,
   "schema_version": 1,

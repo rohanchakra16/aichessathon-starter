@@ -67,3 +67,29 @@ log to the dashboard; that log is the authority. The harness exists so local gam
 
 Python 3.12, type-annotated, ruff and mypy strict clean. Keep `agent.py` readable: it is the
 thing a judge reads if your games get flagged, and the thing you have to explain at the final.
+
+## Autonomous Claude handoff
+
+When working interactively from `main`, read `.autoloop/state.json`, the newest
+records in `experiments/`, `.autoloop/protected/policy.json`, and
+`docs/autoloop/claude-handoff-2026-09-03.md` before acting.
+
+Do not edit the current champion directly. Generate candidates only through
+`controller.py`, which creates isolated worktrees, restricts candidate edits to
+`agent.py` and `weights/`, retains every result, and promotes only statistically
+accepted candidates. Never change or bypass protected tests, benchmark openings,
+promotion thresholds, reliability gates, competition constraints, experiment
+history, or the submission boundary. Never upload without a fresh, explicit
+instruction from the user.
+
+The safe continuation command is:
+
+```sh
+./.venv/bin/python controller.py --iterations 6
+```
+
+Use bounded batches, not `--continuous`. Do not repeat an unsuccessful mechanism
+by changing only a cap, threshold, depth, margin, or other parameter. Stop after
+a genuine blocker, or after at least five consecutive scientific
+non-improvements with no materially new, well-motivated hypothesis. Generator
+or infrastructure failures are not scientific non-improvements.
