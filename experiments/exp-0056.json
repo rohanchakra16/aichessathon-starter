@@ -1267,6 +1267,7 @@
   "consecutive_non_improvements": 3,
   "decision_reason": "sequential paired arena remained inconclusive (score 0.547, interval [0.474, 0.618])",
   "generator": "claude-code",
+  "hypothesis": "Per-ply killer moves plus a quiet-move history table would improve ordering on top of the accepted exchange-aware capture logic.",
   "generator_models": [
     "claude-haiku-4-5-20251001",
     "claude-sonnet-5"

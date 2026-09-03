@@ -818,6 +818,7 @@
   "completed_at": "2026-09-02T23:49:24.906917+00:00",
   "decision_reason": "sequential paired arena accepted candidate (score 0.625, interval [0.522, 0.718])",
   "generator": "resumed-candidate",
+  "hypothesis": "Static-exchange capture ordering and conservative losing-capture quiescence pruning would improve tactical efficiency.",
   "id": "exp-0052",
   "protected_hash": "4548e3626d60d41f3d6d508447e6fc6748f2cf51fb34cb1e3d9ef75ce8ef38a9",
   "resumed_after_interruption": true,

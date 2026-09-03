@@ -8,6 +8,7 @@
   "completed_at": "2026-09-02T14:58:39Z",
   "status": "rejected",
   "generator": "combined-cycle-stockfish-pairwise-psqt-rehearsal",
+  "hypothesis": "Pairwise rehearsal fine-tuning on retained hard positions would improve the compact evaluator without changing search.",
   "decision_reason": "combined rehearsal retrains regressed complete-search teacher alignment across both independent cycles",
   "protected_hash": "3cea7639e500e0561d68d6e4eecec87438fa0e65bcee054fcfc169551eaa2c32",
   "training": {

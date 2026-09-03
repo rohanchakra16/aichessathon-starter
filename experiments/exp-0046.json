@@ -8,6 +8,7 @@
   "completed_at": "2026-09-02T15:02:02Z",
   "status": "rejected",
   "generator": "stockfish-hard-position-real-clock-search-diagnosis",
+  "hypothesis": "A revised real-clock time budget would convert available clock into deeper search without flagging.",
   "change": "increase healthy-clock search cap from 2.0 to 2.2 seconds and allocation divisor from 60 to 55",
   "decision_reason": "extra search time produced exactly neutral teacher alignment on the highest-regret real-clock positions",
   "protected_hash": "3cea7639e500e0561d68d6e4eecec87438fa0e65bcee054fcfc169551eaa2c32",

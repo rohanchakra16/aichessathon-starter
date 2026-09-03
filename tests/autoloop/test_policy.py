@@ -192,14 +192,23 @@ def test_experiment_digest_is_bounded_and_omits_raw_payloads() -> None:
             "id": "exp-0046",
             "status": "rejected",
             "generator": "diagnosis",
+            "generator_summary": "HYPOTHESIS: prefer safe captures " * 100,
             "decision_reason": "neutral result " * 100,
             "arena": {"pgn": "must not be copied"},
         }
     ]
     digest = controller.experiment_digest(records)
     assert "exp-0046" in digest
+    assert "hypothesis:" in digest
+    assert "prefer safe captures" in digest
     assert "must not be copied" not in digest
     assert len(digest) < 500
+
+
+def test_generator_summary_is_single_line_and_bounded() -> None:
+    summary = controller.bounded_generator_summary("  first\nsecond  " * 100, 40)
+    assert "\n" not in summary
+    assert len(summary) == 40
 
 
 def test_status_parser_preserves_first_filename_character() -> None:

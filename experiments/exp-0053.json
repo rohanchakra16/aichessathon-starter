@@ -1267,6 +1267,7 @@
   "consecutive_non_improvements": 0,
   "decision_reason": "sequential paired arena remained inconclusive (score 0.500, interval [0.428, 0.572])",
   "generator": "codex-exec",
+  "hypothesis": "Checking the deadline inside static-exchange recapture chains would prevent hidden time overruns.",
   "generator_prompt_sha256": "aa5ade21ed22da52439745f8a20cdc9882d778b4b63a0fd179e18d39c225b025",
   "id": "exp-0053",
   "protected_hash": "4548e3626d60d41f3d6d508447e6fc6748f2cf51fb34cb1e3d9ef75ce8ef38a9",

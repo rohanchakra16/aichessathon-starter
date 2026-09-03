@@ -1267,6 +1267,7 @@
   "consecutive_non_improvements": 3,
   "decision_reason": "sequential paired arena remained inconclusive (score 0.477, interval [0.405, 0.549])",
   "generator": "claude-code",
+  "hypothesis": "Caching the transposition-table best move would improve move ordering and search efficiency.",
   "generator_models": [
     "claude-haiku-4-5-20251001",
     "claude-sonnet-5"

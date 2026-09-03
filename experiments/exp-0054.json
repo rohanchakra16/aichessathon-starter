@@ -1267,6 +1267,7 @@
   "consecutive_non_improvements": 1,
   "decision_reason": "sequential paired arena remained inconclusive (score 0.477, interval [0.405, 0.549])",
   "generator": "codex-exec",
+  "hypothesis": "Extending quiescence through unresolved checks would avoid static evaluation at tactically invalid check nodes.",
   "generator_prompt_sha256": "080a4152ec9b8eabaed0b552e36ebba9bb83f74e7f751036d96278686275b783",
   "id": "exp-0054",
   "protected_hash": "4548e3626d60d41f3d6d508447e6fc6748f2cf51fb34cb1e3d9ef75ce8ef38a9",

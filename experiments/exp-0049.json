@@ -1267,6 +1267,7 @@
   "consecutive_non_improvements": 5,
   "decision_reason": "sequential paired arena remained inconclusive (score 0.492, interval [0.420, 0.564])",
   "generator": "codex-exec",
+  "hypothesis": "Including quiet promotions in quiescence would resolve promotion tactics beyond the nominal horizon.",
   "generator_prompt_sha256": "432ed715f5716ca7f67b9542df1f2deddd91f4182c99e0e511b3cbf22635abe5",
   "id": "exp-0049",
   "protected_hash": "4548e3626d60d41f3d6d508447e6fc6748f2cf51fb34cb1e3d9ef75ce8ef38a9",

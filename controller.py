@@ -175,10 +175,20 @@ def experiment_digest(records: list[dict[str, Any]]) -> str:
         identifier = str(record.get("id", "unknown"))
         status = str(record.get("status", "unknown"))
         generator = str(record.get("generator", "unknown"))
+        hypothesis = str(
+            record.get("hypothesis", record.get("generator_summary", ""))
+        )
+        hypothesis = " ".join(hypothesis.split())[:180]
         reason = str(record.get("decision_reason", record.get("failure", "no reason")))
-        reason = " ".join(reason.split())[:360]
-        lines.append(f"- {identifier}: {status}; {generator}; {reason}")
+        reason = " ".join(reason.split())[:180]
+        detail = f"; hypothesis: {hypothesis}" if hypothesis else ""
+        lines.append(f"- {identifier}: {status}; {generator}{detail}; {reason}")
     return "\n".join(lines)
+
+
+def bounded_generator_summary(value: Any, limit: int = 600) -> str:
+    """Keep a concise, journal-safe generator explanation for later coordination."""
+    return " ".join(str(value or "").split())[:limit]
 
 
 def candidate_prompt(
@@ -209,7 +219,10 @@ Hard requirements: get_move must always return a legal UCI move under the real
 clock; one CPU, 2 GB RAM, no network/GPU; readable source; no existing engine or
 wrapper. The repository-trained model must continue to materially determine
 leaf evaluation and move selection. The deterministic controller will run all
-tests and benchmarks after you finish."""
+tests and benchmarks after you finish.
+
+In your final response, state the implemented mechanism and intended benefit in
+one concise sentence beginning with `HYPOTHESIS:`. Do not paste logs."""
 
 
 def codex_generate(worktree: Path, prompt: str, policy: dict[str, Any]) -> dict[str, Any]:
@@ -232,6 +245,7 @@ def codex_generate(worktree: Path, prompt: str, policy: dict[str, Any]) -> dict[
     return {
         "generator": "codex-exec",
         "generator_prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
+        "generator_summary": bounded_generator_summary(completed.stdout),
     }
 
 
@@ -319,6 +333,7 @@ def claude_generate(worktree: Path, prompt: str, policy: dict[str, Any]) -> dict
         "generator_version": version.stdout.strip(),
         "generator_models": models,
         "generator_prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
+        "generator_summary": bounded_generator_summary(payload.get("result", "")),
         "generator_usage": {
             "duration_ms": payload.get("duration_ms"),
             "num_turns": payload.get("num_turns"),

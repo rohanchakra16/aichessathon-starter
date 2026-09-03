@@ -1266,6 +1266,7 @@
   "completed_at": "2026-09-02T21:35:54.222294+00:00",
   "decision_reason": "sequential paired arena remained inconclusive (score 0.508, interval [0.436, 0.580])",
   "generator": "resumed-candidate",
+  "hypothesis": "Reusing transposition-table bounds from entries at least as deep as the requested search would reduce repeated work.",
   "id": "exp-0051",
   "protected_hash": "4548e3626d60d41f3d6d508447e6fc6748f2cf51fb34cb1e3d9ef75ce8ef38a9",
   "resumed_after_interruption": true,

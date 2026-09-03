@@ -1267,6 +1267,7 @@
   "consecutive_non_improvements": 6,
   "decision_reason": "sequential paired arena remained inconclusive (score 0.484, interval [0.413, 0.557])",
   "generator": "claude-code",
+  "hypothesis": "A history heuristic for quiet moves would improve alpha-beta move ordering and effective depth.",
   "generator_models": [
     "claude-haiku-4-5-20251001",
     "claude-sonnet-5"
