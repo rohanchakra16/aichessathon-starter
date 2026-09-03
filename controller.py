@@ -27,6 +27,11 @@ STATE_PATH = ROOT / ".autoloop/state.json"
 WORKTREES = ROOT / ".autoloop/worktrees"
 NON_IMPROVEMENT_STATUSES = frozenset({"rejected", "inconclusive"})
 
+# Each candidate generator needs exactly one external executable. Preflight and
+# the per-iteration guard use this map so an unused generator is never required.
+GENERATOR_EXECUTABLES = {"claude-code": "claude", "codex-exec": "codex"}
+COMMON_EXECUTABLES = ("gh", "git", "uv")
+
 
 class InfrastructureError(RuntimeError):
     """External service or host failure; not evidence about candidate quality."""
@@ -356,6 +361,20 @@ def claude_generate(worktree: Path, prompt: str, policy: dict[str, Any]) -> dict
     }
 
 
+def generator_executable(generator: str) -> str:
+    """Return the single external executable a candidate generator requires."""
+    try:
+        return GENERATOR_EXECUTABLES[generator]
+    except KeyError:
+        raise CandidateError(f"unknown candidate generator: {generator}") from None
+
+
+def configured_generators(policy: dict[str, Any]) -> set[str]:
+    """Generators the frozen policy schedule can actually select."""
+    settings = policy["candidate_generators"]
+    return {str(settings["primary"]), str(settings["secondary"])}
+
+
 def generate_candidate(
     worktree: Path,
     experiment_id: str,
@@ -363,6 +382,12 @@ def generate_candidate(
     generator: str,
     records: list[dict[str, Any]],
 ) -> dict[str, Any]:
+    executable = generator_executable(generator)
+    if shutil.which(executable) is None:
+        raise InfrastructureError(
+            f"selected candidate generator {generator!r} is unavailable: "
+            f"required executable {executable!r} is not installed"
+        )
     prompt = candidate_prompt(worktree, experiment_id, generator, records)
     if generator == "codex-exec":
         metadata = codex_generate(worktree, prompt, policy)
@@ -879,7 +904,16 @@ def one_iteration(args: argparse.Namespace) -> bool:
 
 
 def preflight() -> None:
-    for executable in ("claude", "codex", "gh", "git", "uv"):
+    policy = load(POLICY_PATH)
+    required = list(COMMON_EXECUTABLES)
+    generators = configured_generators(policy)
+    # Only require a generator's executable when the frozen schedule can select
+    # nothing else. A mixed schedule verifies the generator each experiment
+    # actually selects in generate_candidate, so a missing alternate generator is
+    # reported as that generator being unavailable rather than blocking preflight.
+    if len(generators) == 1:
+        required.append(generator_executable(next(iter(generators))))
+    for executable in required:
         if shutil.which(executable) is None:
             raise RuntimeError(f"required executable not found: {executable}")
     if git("status", "--porcelain", "--untracked-files=no"):
@@ -889,7 +923,7 @@ def preflight() -> None:
     run(["gh", "auth", "status", "-h", "github.com"])
     if not git("remote", "get-url", "origin"):
         raise RuntimeError("origin remote is required")
-    if load(POLICY_PATH).get("competition_upload_enabled") is not False:
+    if policy.get("competition_upload_enabled") is not False:
         raise RuntimeError("competition upload boundary is not disabled")
 
 
