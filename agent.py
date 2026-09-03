@@ -40,6 +40,15 @@ LMR_QUIET_INDEX = 4
 # ~170 cp margin RMSE) so the trained piece-square model stays dominant while
 # the search gains a monotone reason to prefer active moves over shuffling.
 MOBILITY_WEIGHT = 3.0
+# Non-linear king-danger term. For each king we count how many squares of its
+# one-step ring are attacked by the enemy and add a quadratic penalty. The
+# quadratic shape gives alpha-beta a sharply rising reason to shield its own
+# king and to press an exposed enemy king that the flat castling scalar cannot
+# express. The count is capped so the worst case stays near one pawn
+# (2.5 * 6^2 = 90 cp) and a typical position stays well under a third of a pawn,
+# keeping the trained piece-square model and the accepted mobility term dominant.
+KING_DANGER_WEIGHT = 2.5
+KING_DANGER_CAP = 6
 SEE_VALUES = (0, 100, 320, 330, 500, 900, 20_000)
 
 _deadline = math.inf
@@ -58,6 +67,7 @@ def _model_evaluate(board: chess.Board) -> float:
     endgame = 0.0
     phase = 0
     mobility = 0.0
+    attack_bb = {chess.WHITE: 0, chess.BLACK: 0}
     for colour, sign in ((side, 1.0), (not side, -1.0)):
         for piece_type in range(chess.PAWN, chess.KING + 1):
             squares = board.pieces(piece_type, colour)
@@ -67,15 +77,26 @@ def _model_evaluate(board: chess.Board) -> float:
                 relative = square if colour == chess.WHITE else chess.square_mirror(square)
                 midgame += sign * WEIGHTS[offset + relative]
                 endgame += sign * WEIGHTS[ENDGAME_OFFSET + offset + relative]
+                # attacks_mask returns a plain int bitboard, so ORing it into the
+                # per-colour accumulator adds no per-leaf object allocation and
+                # reuses the piece loop rather than generating moves a second time.
+                attacks = board.attacks_mask(square)
+                attack_bb[colour] |= attacks
                 if piece_type != chess.KING:
-                    # attacks_mask returns a plain int bitboard, so this adds no
-                    # per-leaf object allocation and reuses the piece loop rather
-                    # than generating moves a second time.
-                    mobility += sign * chess.popcount(board.attacks_mask(square))
+                    mobility += sign * chess.popcount(attacks)
 
     blend = min(1.0, phase / MAX_PHASE)
     score = blend * midgame + (1.0 - blend) * endgame
     score += MOBILITY_WEIGHT * mobility
+    for colour, sign in ((side, 1.0), (not side, -1.0)):
+        king_square = board.king(colour)
+        if king_square is None:
+            continue
+        ring = chess.BB_KING_ATTACKS[king_square]
+        pressure = chess.popcount(attack_bb[not colour] & ring)
+        if pressure > KING_DANGER_CAP:
+            pressure = KING_DANGER_CAP
+        score -= sign * KING_DANGER_WEIGHT * pressure * pressure
     if board.has_kingside_castling_rights(side):
         score += WEIGHTS[CASTLING_OFFSET]
     if board.has_kingside_castling_rights(not side):
