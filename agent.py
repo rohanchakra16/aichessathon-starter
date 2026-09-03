@@ -36,14 +36,26 @@ TT_UPPER = 2
 LMR_MIN_DEPTH = 3
 LMR_QUIET_INDEX = 4
 SEE_VALUES = (0, 100, 320, 330, 500, 900, 20_000)
+CONTEMPT = 12.0
 
 _deadline = math.inf
 _nodes = 0
+_root_side = chess.WHITE
 _tt: dict[tuple[object, int, int], tuple[float, int]] = {}
 
 
 class SearchTimeout(Exception):
     """Internal control flow used to return the last completed iteration."""
+
+
+def _draw_score(board: chess.Board) -> float:
+    """Score a drawn node with a small contempt so the engine keeps playing.
+
+    The penalty is expressed from the perspective of the side to move at this
+    node and stays far smaller than a pawn, so a genuine saving draw is still
+    preferred to any material or mating loss.
+    """
+    return -CONTEMPT if board.turn == _root_side else CONTEMPT
 
 
 def _model_evaluate(board: chess.Board) -> float:
@@ -185,7 +197,7 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
     outcome = board.outcome(claim_draw=True)
     if outcome is not None:
         if outcome.winner is None:
-            return 0.0
+            return _draw_score(board)
         return MATE if outcome.winner == board.turn else -MATE
     if depth == 0:
         return _model_evaluate(board)
@@ -222,7 +234,7 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
     outcome = board.outcome(claim_draw=True)
     if outcome is not None:
         if outcome.winner is None:
-            return 0.0
+            return _draw_score(board)
         return MATE if outcome.winner == board.turn else -MATE
     if depth == 0:
         return _quiescence(board, alpha, beta, QUIESCENCE_DEPTH)
@@ -313,8 +325,9 @@ def _budget_seconds(time_left_ms: int) -> float:
 
 def get_move(fen: str, time_left_ms: int) -> str:
     """Return a legal UCI move while retaining a conservative flag margin."""
-    global _deadline, _nodes
+    global _deadline, _nodes, _root_side
     board = chess.Board(fen)
+    _root_side = board.turn
     moves = list(board.legal_moves)
     if not moves:
         raise ValueError("get_move called for a terminal position")
