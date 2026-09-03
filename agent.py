@@ -42,6 +42,21 @@ LMR_QUIET_INDEX = 4
 MOBILITY_WEIGHT = 3.0
 SEE_VALUES = (0, 100, 320, 330, 500, 900, 20_000)
 
+# Textbook tablebase-free "mop-up" table: each square's Manhattan distance to the
+# central 2x2, range 0..6, larger toward the edges and corners. Used only when
+# one side is a lone king so alpha-beta gets a monotone gradient toward cornering
+# the bare king and marching our own king in, converting shuffled endgames the
+# search cannot mate in-tree. Never consulted in any non-lone-king position.
+CENTER_DISTANCE: tuple[int, ...] = tuple(
+    max(3 - chess.square_file(sq), chess.square_file(sq) - 4)
+    + max(3 - chess.square_rank(sq), chess.square_rank(sq) - 4)
+    for sq in range(64)
+)
+# Hard cap on the mop-up contribution: well below a minor piece and any mate
+# score, so it only breaks ties among equal-material king-shuffle positions and
+# can never flip a position material evaluation already calls won or lost.
+MOP_UP_CAP = 60.0
+
 _deadline = math.inf
 _nodes = 0
 _tt: dict[tuple[object, int, int], tuple[float, int]] = {}
@@ -58,10 +73,21 @@ def _model_evaluate(board: chess.Board) -> float:
     endgame = 0.0
     phase = 0
     mobility = 0.0
+    # Per-colour tallies feeding the lone-king mop-up gate after this loop.
+    non_king = {chess.WHITE: 0, chess.BLACK: 0}
+    majors = {chess.WHITE: 0, chess.BLACK: 0}
+    minors = {chess.WHITE: 0, chess.BLACK: 0}
     for colour, sign in ((side, 1.0), (not side, -1.0)):
         for piece_type in range(chess.PAWN, chess.KING + 1):
             squares = board.pieces(piece_type, colour)
-            phase += PHASE_VALUES[piece_type] * len(squares)
+            count = len(squares)
+            phase += PHASE_VALUES[piece_type] * count
+            if piece_type != chess.KING:
+                non_king[colour] += count
+                if piece_type in (chess.ROOK, chess.QUEEN):
+                    majors[colour] += count
+                elif piece_type in (chess.KNIGHT, chess.BISHOP):
+                    minors[colour] += count
             offset = (piece_type - 1) * 64
             for square in squares:
                 relative = square if colour == chess.WHITE else chess.square_mirror(square)
@@ -84,7 +110,44 @@ def _model_evaluate(board: chess.Board) -> float:
         score += WEIGHTS[CASTLING_OFFSET + 1]
     if board.has_queenside_castling_rights(not side):
         score -= WEIGHTS[CASTLING_OFFSET + 1]
+    score += _mop_up_bonus(board, side, non_king, majors, minors)
     return BIAS + score
+
+
+def _mop_up_bonus(
+    board: chess.Board,
+    side: chess.Color,
+    non_king: dict[chess.Color, int],
+    majors: dict[chess.Color, int],
+    minors: dict[chess.Color, int],
+) -> float:
+    """Bounded cornering term for a clearly winning lone-king endgame.
+
+    Active only when exactly one side has mating material (>=1 rook/queen or
+    >=2 minors) and the other side has no pieces or pawns at all. Everywhere
+    else — every middlegame, every normal endgame, every ablation opening — the
+    gate is a handful of integer comparisons and this returns 0.0, so the
+    trained model stays fully determinative.
+    """
+    white_mating = majors[chess.WHITE] >= 1 or minors[chess.WHITE] >= 2
+    black_mating = majors[chess.BLACK] >= 1 or minors[chess.BLACK] >= 2
+    if white_mating and non_king[chess.BLACK] == 0:
+        strong, weak = chess.WHITE, chess.BLACK
+    elif black_mating and non_king[chess.WHITE] == 0:
+        strong, weak = chess.BLACK, chess.WHITE
+    else:
+        return 0.0
+
+    strong_king = board.king(strong)
+    weak_king = board.king(weak)
+    if strong_king is None or weak_king is None:
+        return 0.0
+
+    drive = 4.7 * CENTER_DISTANCE[weak_king] + 1.6 * (
+        14 - chess.square_manhattan_distance(strong_king, weak_king)
+    )
+    drive = min(drive, MOP_UP_CAP)
+    return drive if strong == side else -drive
 
 
 def _capture_gain(board: chess.Board, move: chess.Move) -> int:
