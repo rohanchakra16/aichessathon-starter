@@ -218,7 +218,7 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
         prune_losing_captures=not in_check,
     )
     if not moves:
-        return -MATE if in_check else _model_evaluate(board)
+        return -MATE - depth if in_check else _model_evaluate(board)
 
     best = -math.inf if in_check else alpha
     for move in moves:
@@ -257,7 +257,10 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
     in_check = board.is_check()
     moves = _ordered_moves(board)
     if not moves:
-        return -MATE if in_check else 0.0
+        # A mate found with more depth remaining happened sooner. Encoding that
+        # distance makes the side delivering mate choose the shortest line and
+        # the mated side prolong unavoidable losses.
+        return -MATE - depth if in_check else 0.0
     for move_index, move in enumerate(moves):
         reduce_quiet = (
             depth >= LMR_MIN_DEPTH
