@@ -202,8 +202,8 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
 
     in_check = board.is_check()
     if depth == 0:
-        if in_check and not any(board.generate_legal_moves()):
-            return -MATE
+        if not any(board.generate_legal_moves()):
+            return -MATE if in_check else 0.0
         return _model_evaluate(board)
 
     if not in_check:
@@ -218,7 +218,11 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
         prune_losing_captures=not in_check,
     )
     if not moves:
-        return -MATE if in_check else _model_evaluate(board)
+        if in_check:
+            return -MATE
+        if not any(board.generate_legal_moves()):
+            return 0.0
+        return _model_evaluate(board)
 
     best = -math.inf if in_check else alpha
     for move in moves:
