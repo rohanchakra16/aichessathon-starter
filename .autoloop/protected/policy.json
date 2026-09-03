@@ -5,7 +5,7 @@
   "ci_timeout_seconds": 1200,
   "release_timeout_seconds": 2400,
   "candidate_generators": {
-    "primary": "claude-code",
+    "primary": "codex",
     "secondary": "claude-code",
     "secondary_after_non_improvements": 3,
     "secondary_cadence": 3,
