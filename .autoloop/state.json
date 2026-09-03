@@ -2,14 +2,14 @@
   "champion_commit": "4a0c988009ecae163ac09368f92e4a792dac7568",
   "last_completed_experiment": "exp-0093",
   "live_submission": {
-    "artifact_sha256": "e46046749bf41c13da3328e7029897907a12f0a9e91e0afa950faa2a5f654095",
-    "champion_commit": "1b07bbed0a5837a115f47c4546c760ad8ab88183",
+    "artifact_sha256": "55fec84c6dabf74645dd05593525f64d41240214e336b6162e82201f75137b7b",
+    "champion_commit": "4a0c988009ecae163ac09368f92e4a792dac7568",
     "platform": "AI Chessathon",
-    "record": "submissions/aichessathon-v2-e46046749bf4.json",
+    "record": "submissions/aichessathon-v3-55fec84c6dab.json",
     "status": "active",
     "team": "Phantom",
-    "validated_at": "2026-09-03T11:25:36Z",
-    "version": 2
+    "validated_at": "2026-09-03T22:47:10Z",
+    "version": 3
   },
   "next_experiment": 94,
   "schema_version": 1,
