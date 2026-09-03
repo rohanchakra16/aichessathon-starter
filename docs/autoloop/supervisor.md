@@ -63,6 +63,12 @@ or empty the prompt is exactly as before.
 A generator/infrastructure failure is never counted as a scientific
 non-improvement, matching the handoff.
 
+Every exit path commits its final stop event, including dry runs, Claude
+unavailability, Ctrl-C, stop-file exits and the batch backstop. A failed push is
+also recorded in a clean local commit, so neither condition leaves a tracked
+log modification that would block the next preflight; the next successful push
+publishes the deferred commits.
+
 ## Usage
 
 ```sh

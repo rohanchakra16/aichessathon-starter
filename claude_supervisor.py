@@ -614,6 +614,20 @@ def commit_trail(message: str, *, push: bool) -> None:
             print(f"[{now()}] warning: git push failed (will retry next commit): "
                   f"{pushed.stderr[-500:]}", file=sys.stderr, flush=True)
             append_log({"event": "push_failed", "detail": pushed.stderr[-500:]})
+            run(["git", "add", "--", str(LOG_PATH.relative_to(ROOT))])
+            run(["git", "commit", "-m", "supervisor: record deferred push failure"])
+
+
+def record_stop(reason: str, args: argparse.Namespace, *, detail: str | None = None) -> None:
+    """Persist the final event so a safe stop never blocks the next preflight."""
+    entry: dict[str, Any] = {"event": "stop", "reason": reason}
+    if detail:
+        entry["detail"] = detail
+    append_log(entry)
+    commit_trail(
+        f"supervisor: record stop ({reason})",
+        push=not args.no_push,
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -828,7 +842,7 @@ def main() -> int:
     for _ in range(args.max_batches):
         if STOP_FILE.exists():
             print(f"[{now()}] {STOP_FILE.name} present; stopping.", flush=True)
-            append_log({"event": "stop", "reason": "stop_file"})
+            record_stop("stop_file", args)
             return 0
         try:
             result = cycle(args, last_batch)
@@ -838,16 +852,16 @@ def main() -> int:
                 file=sys.stderr,
                 flush=True,
             )
-            append_log({"event": "stop", "reason": "claude_unavailable", "detail": str(exc)})
+            record_stop("claude_unavailable", args, detail=str(exc))
             return 20
         except KeyboardInterrupt:
             print(f"\n[{now()}] interrupted; state preserved.", file=sys.stderr, flush=True)
-            append_log({"event": "stop", "reason": "keyboard_interrupt"})
+            record_stop("keyboard_interrupt", args)
             return 130
 
         if result.status in ("stop", "dry-run"):
             print(f"[{now()}] stopping: {result.detail}", flush=True)
-            append_log({"event": "stop", "reason": result.detail})
+            record_stop(result.detail, args)
             return 0
 
         last_batch = result.batch
@@ -860,9 +874,7 @@ def main() -> int:
                     file=sys.stderr,
                     flush=True,
                 )
-                append_log(
-                    {"event": "stop", "reason": "infrastructure", "detail": last_batch.infra_error}
-                )
+                record_stop("infrastructure", args, detail=last_batch.infra_error)
                 return 30
         else:
             consecutive_infra = 0
@@ -871,7 +883,7 @@ def main() -> int:
         f"[{now()}] reached --max-batches ({args.max_batches}); stopping. Re-run to continue.",
         flush=True,
     )
-    append_log({"event": "stop", "reason": "max_batches"})
+    record_stop("max_batches", args)
     return 0
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from argparse import Namespace
 
 import pytest
 
@@ -67,3 +68,31 @@ def test_stop_requires_a_stop_condition() -> None:
     payload["stop_condition"] = None
     with pytest.raises(supervisor.ClaudeUnavailable, match="no valid stop condition"):
         supervisor.validate_decision(payload)
+
+
+def test_record_stop_commits_the_final_log_event(monkeypatch: pytest.MonkeyPatch) -> None:
+    appended: list[dict[str, object]] = []
+    committed: list[tuple[str, bool]] = []
+    monkeypatch.setattr(supervisor, "append_log", appended.append)
+    monkeypatch.setattr(
+        supervisor,
+        "commit_trail",
+        lambda message, *, push: committed.append((message, push)),
+    )
+
+    supervisor.record_stop(
+        "claude_unavailable",
+        Namespace(no_push=True),
+        detail="invalid structured output",
+    )
+
+    assert appended == [
+        {
+            "event": "stop",
+            "reason": "claude_unavailable",
+            "detail": "invalid structured output",
+        }
+    ]
+    assert committed == [
+        ("supervisor: record stop (claude_unavailable)", False),
+    ]
