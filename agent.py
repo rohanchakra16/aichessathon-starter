@@ -40,6 +40,14 @@ LMR_QUIET_INDEX = 4
 # ~170 cp margin RMSE) so the trained piece-square model stays dominant while
 # the search gains a monotone reason to prefer active moves over shuffling.
 MOBILITY_WEIGHT = 3.0
+# Fixed centipawn bonus for a rook on a file with no pawns of either colour
+# (fully open) or only enemy pawns (half-open). Deliberately flat and small: the
+# realistic worst case of both rooks on fully open files is under half a pawn,
+# far below the learned model's margin RMSE, so the trained piece-square model
+# stays dominant while the search gains a monotone reason to activate a rook
+# onto the one open file rather than shuffle it along a closed one.
+ROOK_OPEN_FILE = 18.0
+ROOK_HALF_OPEN = 9.0
 SEE_VALUES = (0, 100, 320, 330, 500, 900, 20_000)
 
 _deadline = math.inf
@@ -58,7 +66,12 @@ def _model_evaluate(board: chess.Board) -> float:
     endgame = 0.0
     phase = 0
     mobility = 0.0
+    file_bonus = 0.0
+    white_pawns = board.pieces_mask(chess.PAWN, chess.WHITE)
+    black_pawns = board.pieces_mask(chess.PAWN, chess.BLACK)
     for colour, sign in ((side, 1.0), (not side, -1.0)):
+        own_pawns = white_pawns if colour == chess.WHITE else black_pawns
+        enemy_pawns = black_pawns if colour == chess.WHITE else white_pawns
         for piece_type in range(chess.PAWN, chess.KING + 1):
             squares = board.pieces(piece_type, colour)
             phase += PHASE_VALUES[piece_type] * len(squares)
@@ -72,10 +85,19 @@ def _model_evaluate(board: chess.Board) -> float:
                     # per-leaf object allocation and reuses the piece loop rather
                     # than generating moves a second time.
                     mobility += sign * chess.popcount(board.attacks_mask(square))
+                if piece_type == chess.ROOK:
+                    file_bb = chess.BB_FILES[chess.square_file(square)]
+                    if not file_bb & own_pawns:
+                        file_bonus += sign * (
+                            ROOK_OPEN_FILE
+                            if not file_bb & enemy_pawns
+                            else ROOK_HALF_OPEN
+                        )
 
     blend = min(1.0, phase / MAX_PHASE)
     score = blend * midgame + (1.0 - blend) * endgame
     score += MOBILITY_WEIGHT * mobility
+    score += file_bonus
     if board.has_kingside_castling_rights(side):
         score += WEIGHTS[CASTLING_OFFSET]
     if board.has_kingside_castling_rights(not side):
