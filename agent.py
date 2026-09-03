@@ -37,9 +37,12 @@ LMR_MIN_DEPTH = 3
 LMR_QUIET_INDEX = 4
 SEE_VALUES = (0, 100, 320, 330, 500, 900, 20_000)
 
+KILLER_SLOTS = MAX_DEPTH + 2
+
 _deadline = math.inf
 _nodes = 0
 _tt: dict[tuple[object, int, int], tuple[float, int]] = {}
+_killers: list[list[chess.Move | None]] = [[None, None] for _ in range(KILLER_SLOTS)]
 
 
 class SearchTimeout(Exception):
@@ -137,6 +140,7 @@ def _ordered_moves(
     *,
     captures_only: bool = False,
     prune_losing_captures: bool = False,
+    killers: tuple[chess.Move | None, chess.Move | None] = (None, None),
 ) -> list[chess.Move]:
     moves = list(board.legal_moves)
     if captures_only:
@@ -158,13 +162,19 @@ def _ordered_moves(
             )
         ]
 
-    def priority(move: chess.Move) -> tuple[int, int, int, int, str]:
+    def priority(move: chess.Move) -> tuple[int, int, int, int, int, str]:
         victim = board.piece_type_at(move.to_square) or 0
         attacker = board.piece_type_at(move.from_square) or 0
+        is_killer = (
+            move in killers
+            and not board.is_capture(move)
+            and move.promotion is None
+        )
         return (
             1 if move == principal else 0,
             1 if move.promotion else 0,
             exchange_scores.get(move, 0),
+            1 if is_killer else 0,
             victim * 10 - attacker,
             move.uci(),
         )
@@ -232,7 +242,9 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
     return best
 
 
-def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float:
+def _negamax(
+    board: chess.Board, depth: int, alpha: float, beta: float, ply: int = 0
+) -> float:
     _check_time()
     if _forced_draw(board):
         return 0.0
@@ -255,7 +267,12 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
             return cached_score
     best = -math.inf
     in_check = board.is_check()
-    moves = _ordered_moves(board)
+    killer_pair = (
+        (_killers[ply][0], _killers[ply][1])
+        if 0 <= ply < KILLER_SLOTS
+        else (None, None)
+    )
+    moves = _ordered_moves(board, killers=killer_pair)
     if not moves:
         return -MATE if in_check else 0.0
     for move_index, move in enumerate(moves):
@@ -270,20 +287,29 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
         )
         board.push(move)
         if move_index == 0:
-            score = -_negamax(board, depth - 1, -beta, -alpha)
+            score = -_negamax(board, depth - 1, -beta, -alpha, ply + 1)
         else:
             probe_depth = depth - 2 if reduce_quiet else depth - 1
-            score = -_negamax(board, probe_depth, -alpha - 1.0, -alpha)
+            score = -_negamax(board, probe_depth, -alpha - 1.0, -alpha, ply + 1)
             if reduce_quiet and score > alpha:
-                score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha)
+                score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha, ply + 1)
             if alpha < score < beta:
-                score = -_negamax(board, depth - 1, -beta, -alpha)
+                score = -_negamax(board, depth - 1, -beta, -alpha, ply + 1)
         board.pop()
         if score > best:
             best = score
         if score > alpha:
             alpha = score
         if alpha >= beta:
+            if (
+                0 <= ply < KILLER_SLOTS
+                and not board.is_capture(move)
+                and move.promotion is None
+            ):
+                slot = _killers[ply]
+                if move != slot[0]:
+                    slot[1] = slot[0]
+                    slot[0] = move
             break
     if len(_tt) >= TT_LIMIT:
         _tt.clear()
@@ -307,11 +333,11 @@ def _root_search(board: chess.Board, depth: int, previous: chess.Move) -> chess.
             board.push(move)
             try:
                 if move_index == 0:
-                    score = -_negamax(board, depth - 1, -math.inf, math.inf)
+                    score = -_negamax(board, depth - 1, -math.inf, math.inf, 1)
                 else:
-                    score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha)
+                    score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha, 1)
                     if score > alpha:
-                        score = -_negamax(board, depth - 1, -math.inf, -alpha)
+                        score = -_negamax(board, depth - 1, -math.inf, -alpha, 1)
             finally:
                 board.pop()
             completed += 1
@@ -351,6 +377,9 @@ def get_move(fen: str, time_left_ms: int) -> str:
 
     _deadline = time.monotonic() + budget
     _nodes = 0
+    for slot in _killers:
+        slot[0] = None
+        slot[1] = None
     for depth in range(1, MAX_DEPTH + 1):
         try:
             completed = _root_search(board, depth, best)
