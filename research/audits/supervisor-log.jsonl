@@ -14,3 +14,5 @@
 {"at": "2026-09-03T21:54:25.493273+00:00", "event": "audit", "after_experiment": null, "decision": "CONTINUE", "stop_condition": null, "audit_path": "audit-20260903T215425Z-pre-first-batch.json", "next_direction_title": "Non-linear king-danger term in the leaf evaluation"}
 {"at": "2026-09-03T22:04:19.444962+00:00", "event": "batch", "experiments": ["exp-0090"], "promotion": false, "infra_error": null}
 {"at": "2026-09-03T22:06:30.061224+00:00", "event": "audit", "after_experiment": "exp-0090", "decision": "CONTINUE", "stop_condition": null, "audit_path": "audit-20260903T220630Z-exp-0090.json", "next_direction_title": "Passed-pawn advancement term in the leaf evaluation"}
+{"at": "2026-09-03T22:16:48.415562+00:00", "event": "batch", "experiments": ["exp-0091"], "promotion": false, "infra_error": null}
+{"at": "2026-09-03T22:19:22.093694+00:00", "event": "audit", "after_experiment": "exp-0091", "decision": "CONTINUE", "stop_condition": null, "audit_path": "audit-20260903T221922Z-exp-0091.json", "next_direction_title": "Rook on open / half-open file term in the leaf evaluation"}
