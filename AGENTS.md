@@ -82,14 +82,21 @@ promotion thresholds, reliability gates, competition constraints, experiment
 history, or the submission boundary. Never upload without a fresh, explicit
 instruction from the user.
 
-The safe continuation command is:
+The safe per-batch continuation command is:
 
 ```sh
-./.venv/bin/python controller.py --iterations 6
+./.venv/bin/python controller.py --iterations 3
 ```
 
-Use bounded batches, not `--continuous`. Do not repeat an unsuccessful mechanism
-by changing only a cap, threshold, depth, margin, or other parameter. Stop after
-a genuine blocker, or after at least five consecutive scientific
-non-improvements with no materially new, well-motivated hypothesis. Generator
-or infrastructure failures are not scientific non-improvements.
+Supervise repeated bounded batches rather than using `--continuous`, because
+the controller cannot make the final semantic judgment that no worthwhile
+hypothesis remains. A batch boundary is not a stopping condition: inspect the
+new evidence and immediately start the next batch without user interaction when
+a materially different, well-motivated hypothesis remains. Do not repeat an
+unsuccessful mechanism by changing only a cap, threshold, depth, margin, or
+other parameter. Stop after a genuine blocker, or after at least five
+consecutive scientific non-improvements with no materially new, well-motivated
+hypothesis. Generator or infrastructure failures are not scientific
+non-improvements. Read the dated handoff's exhausted-mechanism section before
+starting a candidate so older failures outside a short recent window are not
+repeated.
