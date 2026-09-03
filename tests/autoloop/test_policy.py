@@ -143,15 +143,15 @@ def test_workflow_queries_are_pinned_to_user_fork() -> None:
     assert policy()["github_repository"] == "rohanchakra16/aichessathon-starter"
 
 
-def test_generator_schedule_uses_claude_for_every_candidate_turn_after_handoff() -> None:
+def test_generator_schedule_uses_codex_primary_and_claude_at_stall_cadence() -> None:
     current = policy()
     expected = {
-        0: "claude-code",
-        1: "claude-code",
-        2: "claude-code",
+        0: "codex-exec",
+        1: "codex-exec",
+        2: "codex-exec",
         3: "claude-code",
-        4: "claude-code",
-        5: "claude-code",
+        4: "codex-exec",
+        5: "codex-exec",
         6: "claude-code",
     }
     assert {
