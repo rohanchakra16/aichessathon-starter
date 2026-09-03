@@ -35,6 +35,8 @@ TT_LOWER = 1
 TT_UPPER = 2
 LMR_MIN_DEPTH = 3
 LMR_QUIET_INDEX = 4
+NULL_MOVE_MIN_DEPTH = 4
+NULL_MOVE_REDUCTION = 2
 SEE_VALUES = (0, 100, 320, 330, 500, 900, 20_000)
 
 _deadline = math.inf
@@ -217,7 +219,14 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
     return best
 
 
-def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float:
+def _negamax(
+    board: chess.Board,
+    depth: int,
+    alpha: float,
+    beta: float,
+    *,
+    allow_null: bool = True,
+) -> float:
     _check_time()
     outcome = board.outcome(claim_draw=True)
     if outcome is not None:
@@ -241,6 +250,31 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
             beta = min(beta, cached_score)
         if alpha >= beta:
             return cached_score
+
+    non_pawn_material = any(
+        board.pieces(piece_type, board.turn)
+        for piece_type in (chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN)
+    )
+    if (
+        allow_null
+        and depth >= NULL_MOVE_MIN_DEPTH
+        and math.isfinite(beta)
+        and not board.is_check()
+        and non_pawn_material
+        and _model_evaluate(board) >= beta
+    ):
+        board.push(chess.Move.null())
+        null_score = -_negamax(
+            board,
+            depth - 1 - NULL_MOVE_REDUCTION,
+            -beta,
+            -beta + 1.0,
+            allow_null=False,
+        )
+        board.pop()
+        if null_score >= beta:
+            return null_score
+
     best = -math.inf
     in_check = board.is_check()
     for move_index, move in enumerate(_ordered_moves(board)):
