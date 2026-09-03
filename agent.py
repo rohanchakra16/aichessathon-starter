@@ -202,9 +202,32 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
 
     in_check = board.is_check()
     if depth == 0:
-        if in_check and not any(board.generate_legal_moves()):
+        if not in_check:
+            return _model_evaluate(board)
+
+        # Never apply the static model to a position whose side to move must
+        # answer check.  Resolve one final evasion ply, capped here so long
+        # checking sequences cannot make quiescence unbounded.
+        evasions = list(board.legal_moves)
+        if not evasions:
             return -MATE
-        return _model_evaluate(board)
+        best = -math.inf
+        for move in _ordered_moves(board):
+            board.push(move)
+            try:
+                if _forced_draw(board):
+                    score = 0.0
+                elif board.is_checkmate():
+                    score = MATE
+                else:
+                    score = -_model_evaluate(board)
+            finally:
+                board.pop()
+            best = max(best, score)
+            alpha = max(alpha, score)
+            if alpha >= beta:
+                break
+        return best
 
     if not in_check:
         stand_pat = _model_evaluate(board)
