@@ -35,6 +35,7 @@ TT_LOWER = 1
 TT_UPPER = 2
 LMR_MIN_DEPTH = 3
 LMR_QUIET_INDEX = 4
+ASPIRATION_MARGIN = 75.0
 SEE_VALUES = (0, 100, 320, 330, 500, 900, 20_000)
 
 _deadline = math.inf
@@ -296,22 +297,29 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
     return best
 
 
-def _root_search(board: chess.Board, depth: int, previous: chess.Move) -> chess.Move:
+def _root_search(
+    board: chess.Board,
+    depth: int,
+    previous: chess.Move,
+    alpha: float = -math.inf,
+    beta: float = math.inf,
+) -> tuple[chess.Move, float, bool]:
     best_move = previous
     best_score = -math.inf
-    alpha = -math.inf
     completed = 0
+    search_finished = True
     try:
-        for move_index, move in enumerate(_ordered_moves(board, previous)):
+        moves = _ordered_moves(board, previous)
+        for move_index, move in enumerate(moves):
             _check_time()
             board.push(move)
             try:
                 if move_index == 0:
-                    score = -_negamax(board, depth - 1, -math.inf, math.inf)
+                    score = -_negamax(board, depth - 1, -beta, -alpha)
                 else:
                     score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha)
-                    if score > alpha:
-                        score = -_negamax(board, depth - 1, -math.inf, -alpha)
+                    if alpha < score < beta:
+                        score = -_negamax(board, depth - 1, -beta, -alpha)
             finally:
                 board.pop()
             completed += 1
@@ -319,13 +327,16 @@ def _root_search(board: chess.Board, depth: int, previous: chess.Move) -> chess.
                 best_score = score
                 best_move = move
             alpha = max(alpha, score)
+            if alpha >= beta:
+                break
     except SearchTimeout:
+        search_finished = False
         # Salvage a fully searched deeper move: every recorded score comes from a
         # completed negamax call, so the current best is backed by a search to
         # `depth`. Only re-raise if nothing at this depth finished.
         if completed == 0:
             raise
-    return best_move
+    return best_move, best_score, search_finished
 
 
 def _budget_seconds(time_left_ms: int) -> float:
@@ -351,12 +362,26 @@ def get_move(fen: str, time_left_ms: int) -> str:
 
     _deadline = time.monotonic() + budget
     _nodes = 0
+    previous_score: float | None = None
     for depth in range(1, MAX_DEPTH + 1):
         try:
-            completed = _root_search(board, depth, best)
+            if previous_score is None:
+                completed, score, search_finished = _root_search(board, depth, best)
+            else:
+                low = previous_score - ASPIRATION_MARGIN
+                high = previous_score + ASPIRATION_MARGIN
+                completed, score, search_finished = _root_search(
+                    board, depth, best, low, high
+                )
+                if search_finished and (score <= low or score >= high):
+                    completed, score, search_finished = _root_search(
+                        board, depth, completed
+                    )
         except SearchTimeout:
             break
         best = completed
+        if search_finished:
+            previous_score = score
         if time.monotonic() >= _deadline:
             break
     return best.uci()
