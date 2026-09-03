@@ -241,7 +241,14 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
 
     alpha_original = alpha
     beta_original = beta
-    key = (board._transposition_key(), board.halfmove_clock, depth)
+    # Bucket the halfmove clock so the many nodes far from the 50-move rule
+    # share one transposition entry instead of a separate entry per clock value.
+    # Exact values are kept only inside the draw zone, where the clock changes
+    # the score. The 80-ply cushion exceeds the deepest reachable line
+    # (MAX_DEPTH + QUIESCENCE_DEPTH), so a reused score can never hide an
+    # imminent draw, and `_forced_draw` still catches real ones before this probe.
+    draw_zone_clock = board.halfmove_clock if board.halfmove_clock >= 80 else 0
+    key = (board._transposition_key(), draw_zone_clock, depth)
     cached = _tt.get(key)
     if cached is not None:
         cached_score, flag = cached
