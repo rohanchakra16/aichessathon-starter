@@ -35,6 +35,7 @@ TT_LOWER = 1
 TT_UPPER = 2
 LMR_MIN_DEPTH = 3
 LMR_QUIET_INDEX = 4
+MAX_CHECK_EXTENSIONS = 3
 SEE_VALUES = (0, 100, 320, 330, 500, 900, 20_000)
 
 _deadline = math.inf
@@ -217,13 +218,23 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
     return best
 
 
-def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float:
+def _negamax(
+    board: chess.Board,
+    depth: int,
+    alpha: float,
+    beta: float,
+    extensions: int = 0,
+) -> float:
     _check_time()
     outcome = board.outcome(claim_draw=True)
     if outcome is not None:
         if outcome.winner is None:
             return 0.0
         return MATE if outcome.winner == board.turn else -MATE
+    in_check = board.is_check()
+    if in_check and depth >= 1 and extensions < MAX_CHECK_EXTENSIONS:
+        depth += 1
+        extensions += 1
     if depth == 0:
         return _quiescence(board, alpha, beta, QUIESCENCE_DEPTH)
 
@@ -242,7 +253,6 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
         if alpha >= beta:
             return cached_score
     best = -math.inf
-    in_check = board.is_check()
     for move_index, move in enumerate(_ordered_moves(board)):
         reduce_quiet = (
             depth >= LMR_MIN_DEPTH
@@ -255,14 +265,14 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
         )
         board.push(move)
         if move_index == 0:
-            score = -_negamax(board, depth - 1, -beta, -alpha)
+            score = -_negamax(board, depth - 1, -beta, -alpha, extensions)
         else:
             probe_depth = depth - 2 if reduce_quiet else depth - 1
-            score = -_negamax(board, probe_depth, -alpha - 1.0, -alpha)
+            score = -_negamax(board, probe_depth, -alpha - 1.0, -alpha, extensions)
             if reduce_quiet and score > alpha:
-                score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha)
+                score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha, extensions)
             if alpha < score < beta:
-                score = -_negamax(board, depth - 1, -beta, -alpha)
+                score = -_negamax(board, depth - 1, -beta, -alpha, extensions)
         board.pop()
         if score > best:
             best = score
