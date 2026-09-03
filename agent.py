@@ -21,6 +21,7 @@ WEIGHTS: tuple[float, ...] = tuple(float(value) for value in MODEL["weights"])
 BIAS = float(MODEL["bias"])
 
 MATE = 1_000_000.0
+MATE_BOUND = MATE - 1_000.0
 SQUARE_FEATURES = 6 * 64
 ENDGAME_OFFSET = SQUARE_FEATURES
 CASTLING_OFFSET = SQUARE_FEATURES * 2
@@ -179,14 +180,17 @@ def _check_time() -> None:
         raise SearchTimeout
 
 
-def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> float:
+def _quiescence(
+    board: chess.Board, alpha: float, beta: float, depth: int, ply: int
+) -> float:
     """Resolve short capture sequences before applying the learned evaluator."""
     _check_time()
     outcome = board.outcome(claim_draw=True)
     if outcome is not None:
         if outcome.winner is None:
             return 0.0
-        return MATE if outcome.winner == board.turn else -MATE
+        mate = MATE - ply
+        return mate if outcome.winner == board.turn else -mate
     if depth == 0:
         return _model_evaluate(board)
 
@@ -208,7 +212,7 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
     best = -math.inf if in_check else alpha
     for move in moves:
         board.push(move)
-        score = -_quiescence(board, -beta, -alpha, depth - 1)
+        score = -_quiescence(board, -beta, -alpha, depth - 1, ply + 1)
         board.pop()
         best = max(best, score)
         alpha = max(alpha, score)
@@ -217,15 +221,18 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
     return best
 
 
-def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float:
+def _negamax(
+    board: chess.Board, depth: int, alpha: float, beta: float, ply: int = 0
+) -> float:
     _check_time()
     outcome = board.outcome(claim_draw=True)
     if outcome is not None:
         if outcome.winner is None:
             return 0.0
-        return MATE if outcome.winner == board.turn else -MATE
+        mate = MATE - ply
+        return mate if outcome.winner == board.turn else -mate
     if depth == 0:
-        return _quiescence(board, alpha, beta, QUIESCENCE_DEPTH)
+        return _quiescence(board, alpha, beta, QUIESCENCE_DEPTH, ply)
 
     alpha_original = alpha
     beta_original = beta
@@ -255,14 +262,14 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
         )
         board.push(move)
         if move_index == 0:
-            score = -_negamax(board, depth - 1, -beta, -alpha)
+            score = -_negamax(board, depth - 1, -beta, -alpha, ply + 1)
         else:
             probe_depth = depth - 2 if reduce_quiet else depth - 1
-            score = -_negamax(board, probe_depth, -alpha - 1.0, -alpha)
+            score = -_negamax(board, probe_depth, -alpha - 1.0, -alpha, ply + 1)
             if reduce_quiet and score > alpha:
-                score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha)
+                score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha, ply + 1)
             if alpha < score < beta:
-                score = -_negamax(board, depth - 1, -beta, -alpha)
+                score = -_negamax(board, depth - 1, -beta, -alpha, ply + 1)
         board.pop()
         if score > best:
             best = score
@@ -270,6 +277,10 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
             alpha = score
         if alpha >= beta:
             break
+    if abs(best) >= MATE_BOUND:
+        # Mate scores are distance-from-root relative; caching them would poison
+        # transpositions reached at a different ply. Skip the store instead.
+        return best
     if len(_tt) >= TT_LIMIT:
         _tt.clear()
     flag = TT_EXACT
@@ -292,11 +303,11 @@ def _root_search(board: chess.Board, depth: int, previous: chess.Move) -> chess.
             board.push(move)
             try:
                 if move_index == 0:
-                    score = -_negamax(board, depth - 1, -math.inf, math.inf)
+                    score = -_negamax(board, depth - 1, -math.inf, math.inf, 1)
                 else:
-                    score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha)
+                    score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha, 1)
                     if score > alpha:
-                        score = -_negamax(board, depth - 1, -math.inf, -alpha)
+                        score = -_negamax(board, depth - 1, -math.inf, -alpha, 1)
             finally:
                 board.pop()
             completed += 1
