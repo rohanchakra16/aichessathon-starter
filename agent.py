@@ -35,6 +35,11 @@ TT_LOWER = 1
 TT_UPPER = 2
 LMR_MIN_DEPTH = 3
 LMR_QUIET_INDEX = 4
+# Centipawns per net square attacked by a non-king piece. Kept deliberately
+# small (a typical ~10-square differential is ~0.3 pawn, far below the model's
+# ~170 cp margin RMSE) so the trained piece-square model stays dominant while
+# the search gains a monotone reason to prefer active moves over shuffling.
+MOBILITY_WEIGHT = 3.0
 SEE_VALUES = (0, 100, 320, 330, 500, 900, 20_000)
 
 _deadline = math.inf
@@ -52,6 +57,7 @@ def _model_evaluate(board: chess.Board) -> float:
     midgame = 0.0
     endgame = 0.0
     phase = 0
+    mobility = 0.0
     for colour, sign in ((side, 1.0), (not side, -1.0)):
         for piece_type in range(chess.PAWN, chess.KING + 1):
             squares = board.pieces(piece_type, colour)
@@ -61,9 +67,15 @@ def _model_evaluate(board: chess.Board) -> float:
                 relative = square if colour == chess.WHITE else chess.square_mirror(square)
                 midgame += sign * WEIGHTS[offset + relative]
                 endgame += sign * WEIGHTS[ENDGAME_OFFSET + offset + relative]
+                if piece_type != chess.KING:
+                    # attacks_mask returns a plain int bitboard, so this adds no
+                    # per-leaf object allocation and reuses the piece loop rather
+                    # than generating moves a second time.
+                    mobility += sign * chess.popcount(board.attacks_mask(square))
 
     blend = min(1.0, phase / MAX_PHASE)
     score = blend * midgame + (1.0 - blend) * endgame
+    score += MOBILITY_WEIGHT * mobility
     if board.has_kingside_castling_rights(side):
         score += WEIGHTS[CASTLING_OFFSET]
     if board.has_kingside_castling_rights(not side):
