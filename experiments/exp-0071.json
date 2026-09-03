@@ -1,0 +1,12 @@
+{
+  "branch": "autoloop/candidate-0071",
+  "completed_at": "2026-09-03T16:58:25.853428+00:00",
+  "consecutive_non_improvements": 4,
+  "failure": "CandidateError: unknown candidate generator: codex",
+  "generator": "codex",
+  "id": "exp-0071",
+  "protected_hash": "91d606c177e14cf1c641aced07f16a18d92f62de19345460963de7c8ccaac181",
+  "schema_version": 1,
+  "started_at": "2026-09-03T16:58:25.657378+00:00",
+  "status": "failed"
+}
