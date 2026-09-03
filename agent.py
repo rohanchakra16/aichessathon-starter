@@ -40,6 +40,9 @@ SEE_VALUES = (0, 100, 320, 330, 500, 900, 20_000)
 _deadline = math.inf
 _nodes = 0
 _tt: dict[tuple[object, int, int], tuple[float, int]] = {}
+_killers: list[list[chess.Move | None]] = []
+_history: dict[tuple[bool, int, int], int] = {}
+KILLER_PLIES = MAX_DEPTH + QUIESCENCE_DEPTH + 2
 
 
 class SearchTimeout(Exception):
@@ -137,6 +140,8 @@ def _ordered_moves(
     *,
     captures_only: bool = False,
     prune_losing_captures: bool = False,
+    killers: tuple[chess.Move, ...] = (),
+    history: dict[tuple[bool, int, int], int] | None = None,
 ) -> list[chess.Move]:
     moves = list(board.legal_moves)
     if captures_only:
@@ -158,18 +163,45 @@ def _ordered_moves(
             )
         ]
 
+    killer_set = frozenset(killers)
+
     def priority(move: chess.Move) -> tuple[int, int, int, int, str]:
+        if move == principal:
+            return (6, 0, 0, 0, "")
         victim = board.piece_type_at(move.to_square) or 0
         attacker = board.piece_type_at(move.from_square) or 0
-        return (
-            1 if move == principal else 0,
-            1 if move.promotion else 0,
-            exchange_scores.get(move, 0),
-            victim * 10 - attacker,
-            move.uci(),
-        )
+        exchange = exchange_scores.get(move)
+        if exchange is not None:
+            return (
+                5 if exchange >= 0 else 1,
+                exchange,
+                victim * 10 - attacker,
+                0,
+                move.uci(),
+            )
+        if move.promotion:
+            return (4, 0, 0, 0, move.uci())
+        if move in killer_set:
+            return (3, 0, 0, 0, move.uci())
+        rank = 0
+        if history is not None:
+            rank = history.get((board.turn, move.from_square, move.to_square), 0)
+        return (2, 0, 0, rank, move.uci())
 
     return sorted(moves, key=priority, reverse=True)
+
+
+def _record_quiet_cutoff(
+    colour: chess.Color, move: chess.Move, depth: int, ply: int
+) -> None:
+    """Promote a quiet move that caused a beta cutoff for later move ordering."""
+    if ply < KILLER_PLIES:
+        slot = _killers[ply]
+        if slot[0] != move:
+            slot[1] = slot[0]
+            slot[0] = move
+    key = (bool(colour), move.from_square, move.to_square)
+    _history[key] = _history.get(key, 0) + depth * depth
 
 
 def _check_time() -> None:
@@ -217,7 +249,9 @@ def _quiescence(board: chess.Board, alpha: float, beta: float, depth: int) -> fl
     return best
 
 
-def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float:
+def _negamax(
+    board: chess.Board, depth: int, alpha: float, beta: float, ply: int
+) -> float:
     _check_time()
     outcome = board.outcome(claim_draw=True)
     if outcome is not None:
@@ -243,7 +277,12 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
             return cached_score
     best = -math.inf
     in_check = board.is_check()
-    for move_index, move in enumerate(_ordered_moves(board)):
+    ply_killers: tuple[chess.Move, ...] = ()
+    if ply < KILLER_PLIES:
+        ply_killers = tuple(m for m in _killers[ply] if m is not None)
+    for move_index, move in enumerate(
+        _ordered_moves(board, killers=ply_killers, history=_history)
+    ):
         reduce_quiet = (
             depth >= LMR_MIN_DEPTH
             and move_index >= LMR_QUIET_INDEX
@@ -255,20 +294,22 @@ def _negamax(board: chess.Board, depth: int, alpha: float, beta: float) -> float
         )
         board.push(move)
         if move_index == 0:
-            score = -_negamax(board, depth - 1, -beta, -alpha)
+            score = -_negamax(board, depth - 1, -beta, -alpha, ply + 1)
         else:
             probe_depth = depth - 2 if reduce_quiet else depth - 1
-            score = -_negamax(board, probe_depth, -alpha - 1.0, -alpha)
+            score = -_negamax(board, probe_depth, -alpha - 1.0, -alpha, ply + 1)
             if reduce_quiet and score > alpha:
-                score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha)
+                score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha, ply + 1)
             if alpha < score < beta:
-                score = -_negamax(board, depth - 1, -beta, -alpha)
+                score = -_negamax(board, depth - 1, -beta, -alpha, ply + 1)
         board.pop()
         if score > best:
             best = score
         if score > alpha:
             alpha = score
         if alpha >= beta:
+            if not board.is_capture(move) and move.promotion is None:
+                _record_quiet_cutoff(board.turn, move, depth, ply)
             break
     if len(_tt) >= TT_LIMIT:
         _tt.clear()
@@ -289,11 +330,11 @@ def _root_search(board: chess.Board, depth: int, previous: chess.Move) -> chess.
         _check_time()
         board.push(move)
         if move_index == 0:
-            score = -_negamax(board, depth - 1, -math.inf, math.inf)
+            score = -_negamax(board, depth - 1, -math.inf, math.inf, 1)
         else:
-            score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha)
+            score = -_negamax(board, depth - 1, -alpha - 1.0, -alpha, 1)
             if score > alpha:
-                score = -_negamax(board, depth - 1, -math.inf, -alpha)
+                score = -_negamax(board, depth - 1, -math.inf, -alpha, 1)
         board.pop()
         if score > best_score:
             best_score = score
@@ -313,7 +354,7 @@ def _budget_seconds(time_left_ms: int) -> float:
 
 def get_move(fen: str, time_left_ms: int) -> str:
     """Return a legal UCI move while retaining a conservative flag margin."""
-    global _deadline, _nodes
+    global _deadline, _nodes, _killers, _history
     board = chess.Board(fen)
     moves = list(board.legal_moves)
     if not moves:
@@ -325,6 +366,8 @@ def get_move(fen: str, time_left_ms: int) -> str:
 
     _deadline = time.monotonic() + budget
     _nodes = 0
+    _killers = [[None, None] for _ in range(KILLER_PLIES)]
+    _history = {}
     for depth in range(1, MAX_DEPTH + 1):
         try:
             completed = _root_search(board, depth, best)
