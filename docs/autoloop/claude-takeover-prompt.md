@@ -14,10 +14,11 @@ promotion/rejection, and experiment persistence through `controller.py`. Do
 not edit the champion on `main` directly.
 
 Continue autonomously from the newest protected champion. Do not stop after
-the first promotion and do not impose an arbitrary total experiment limit.
-Run bounded controller batches so you can inspect accumulated evidence between
-batches, then immediately start another batch without user interaction when a
-materially different, well-motivated hypothesis remains.
+the first promotion and do not impose an arbitrary total experiment limit. The
+supported entry point is `./.venv/bin/python claude_supervisor.py --continuous`
+from a normal macOS Terminal. Do not try to run GitHub operations from Claude
+Desktop's sandbox; the supervisor owns that environment boundary and invokes
+Claude for every evidence audit and candidate.
 
 For every candidate:
 
@@ -47,9 +48,9 @@ prevents safe progress, or at least five scientifically completed candidates
 since the newest promotion have failed and, after a full evidence audit, no
 materially different well-motivated experiment remains in the current
 search/evaluator direction. Generator and infrastructure failures do not count
-as scientific non-improvements. The current streak already exceeds five, so do
-the evidence audit before `exp-0087`; do not manufacture another parameter
-variant merely to keep the loop running.
+as scientific non-improvements. Always compute the current streak from the
+retained experiment records and `.autoloop/state.json`; do not trust a dated
+experiment number in prose.
 
 When a stopping condition is genuinely reached, run the protected release
 check. It must not upload anything. Then report every experiment, hypothesis,

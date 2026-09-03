@@ -4,23 +4,31 @@
 
 - Repository: `rohanchakra16/aichessathon-starter`
 - Local root: `/Users/phantomvenom/Documents/Codex/2026-08-30/referenced-chatgpt-conversation-this-is-an/outputs/aichessathon-starter`
-- Protected internal champion: `exp-0066`, commit
-  `e9da1e556cd43d0045d4733e9dd313512ab128f4`
-- Last completed experiment: `exp-0086`
-- Next experiment: `exp-0087`
-- Live competition upload: v2, the older `exp-0052` champion, checksum prefix
-  `e46046749bf4`
+- Protected internal champion: `exp-0089`, commit
+  `4a0c988009ecae163ac09368f92e4a792dac7568`
+- Last completed experiment: `exp-0093`
+- Next experiment: `exp-0094`
+- Live competition upload: v3, the current `exp-0089` champion, checksum prefix
+  `55fec84c6dab`; dashboard status `VALID` and `Active`
 - Competition upload remains outside the autonomous controller.
 
 Always re-read `.autoloop/state.json`; it is authoritative if later promotions
 make any identifier in this dated checkpoint stale.
 
-## Why exp-0066 remains champion
+## Why exp-0089 remains champion
 
-Claude replaced `board.outcome(claim_draw=True)` at every search node with
-cheaper terminal/draw checks. Against the previous champion it scored 20 wins,
-10 draws and 2 losses: 78.125%, with a 68.58–85.39% confidence interval. It
-passed the protected exact-artifact, legality, clock, resource and model gates.
+`exp-0066` first earned promotion by replacing the expensive
+`board.outcome(claim_draw=True)` search-node probe. `exp-0089` later added a
+cheap 3-centipawn-per-square net-mobility term to the learned leaf evaluator
+and beat `exp-0066` 14 wins, 12 draws and 6 losses: 62.5%, with a 52.23–71.76%
+confidence interval. It passed exact-artifact, legality, clock, resource and
+model-ablation gates with zero failures.
+
+Four subsequent positional terms did not clear promotion: `exp-0090`
+king-danger (18-29-17, 50.8%), `exp-0091` passed pawns (21-26-17, 53.1%),
+`exp-0092` rook file activity (17-29-18, 49.2%), and `exp-0093` doubled/isolated
+pawns (14-34-16, 48.4%). The next audit must treat these mechanisms as tested,
+recompute the streak as four, and choose a materially different hypothesis.
 
 Eleven scientifically completed candidates from `exp-0076` through `exp-0086`
 failed to displace it. All eleven had zero arena reliability failures:
@@ -76,31 +84,24 @@ rediscover those accepted mechanisms.
 
 ## How Claude should continue
 
-Use an interactive local Claude Code session at the repository root as the
-semantic supervisor. The deterministic controller is configured Claude-only
-and limits each candidate to `agent.py` and permitted `weights/` files.
+Use the external supervisor from a normal macOS Terminal. Do not ask an
+interactive Claude Desktop sandbox to run `gh`; that environment's TLS proxy
+certificate is not trusted by GitHub CLI. The supervisor keeps GitHub-dependent
+controller work in the normal Terminal environment and invokes Claude Code
+programmatically for both evidence audits and candidates.
 
-Run a bounded batch such as:
+Run:
 
 ```sh
-./.venv/bin/python controller.py --iterations 3
+./.venv/bin/python claude_supervisor.py --continuous
 ```
 
-After each batch, inspect the new retained evidence. A batch boundary is not a
-stopping condition: immediately start another batch without user interaction
-when a materially different, well-motivated hypothesis remains. Do not use
-`--continuous`; it knows how to stop on infrastructure failure or a stop file,
-but it cannot make the semantic exhaustion judgment.
-
-The existing eleven-result streak exceeds the numeric stopping minimum. Before
-starting `exp-0087`, therefore, perform an explicit evidence audit. Continue
-only with a genuinely different mechanism that is justified by the champion's
-code, retained losing games, or reproducible profiling. If no such mechanism
-exists in the current search/evaluator direction, declare that direction
-saturated rather than manufacturing a parameter variant. A materially new
-offline evaluator-training or loss-driven feature programme may be proposed as
-a next direction, but do not silently expand candidate permissions or alter
-governance to create it.
+The first action on every process start is a fresh Claude evidence audit, so a
+stale `research/next-direction.md` is never executed blindly. A batch boundary
+and a promotion are not stop conditions. The supervisor continues until Claude
+finds genuine scientific saturation, an infrastructure blocker occurs, the
+Claude subscription becomes unavailable, or `.autoloop/supervisor.stop` is
+created.
 
 Keep the Mac awake, the local session open and the internet connected. Do not
 enable permission bypass. GitHub Actions runs the expensive protected games.

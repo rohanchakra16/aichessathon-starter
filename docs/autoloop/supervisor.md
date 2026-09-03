@@ -72,6 +72,9 @@ publishes the deferred commits.
 ## Usage
 
 ```sh
+# fully autonomous: no arbitrary batch limit; stop only on the rules above
+./.venv/bin/python claude_supervisor.py --continuous
+
 # unattended, audit after every experiment
 ./.venv/bin/python claude_supervisor.py
 
@@ -85,7 +88,7 @@ publishes the deferred commits.
 touch .autoloop/supervisor.stop
 ```
 
-Key flags: `--iterations` (experiments/batch, default 1), `--max-batches`,
+Key flags: `--iterations` (experiments/batch, default 1), `--continuous`, `--max-batches`,
 `--max-infra-failures`, `--audit-model` (default `sonnet`), `--audit-effort`
 (default `high`), `--audit-budget-usd` (default 2.0), `--no-push`, `--dry-run`.
 

@@ -36,6 +36,7 @@ Boundaries this script never crosses:
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 import os
 import subprocess
@@ -811,6 +812,10 @@ def main() -> int:
         help="hard backstop on total batches this run (default 40)",
     )
     parser.add_argument(
+        "--continuous", action="store_true",
+        help="run until a real stop condition; ignore the --max-batches backstop",
+    )
+    parser.add_argument(
         "--max-infra-failures", type=int, default=2,
         help="consecutive controller infrastructure failures before stopping",
     )
@@ -839,7 +844,8 @@ def main() -> int:
     last_batch: BatchOutcome | None = None
     consecutive_infra = 0
 
-    for _ in range(args.max_batches):
+    batch_range = itertools.count() if args.continuous else range(args.max_batches)
+    for _ in batch_range:
         if STOP_FILE.exists():
             print(f"[{now()}] {STOP_FILE.name} present; stopping.", flush=True)
             record_stop("stop_file", args)
@@ -879,6 +885,8 @@ def main() -> int:
         else:
             consecutive_infra = 0
 
+    # An infinite itertools.count() only exits through one of the explicit
+    # safe-stop returns above. This tail is reached only in bounded mode.
     print(
         f"[{now()}] reached --max-batches ({args.max_batches}); stopping. Re-run to continue.",
         flush=True,
