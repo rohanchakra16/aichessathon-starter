@@ -302,13 +302,21 @@ def _root_search(board: chess.Board, depth: int, previous: chess.Move) -> chess.
     return best_move
 
 
-def _budget_seconds(time_left_ms: int) -> float:
+def _budget_seconds(time_left_ms: int, board: chess.Board) -> float:
     if time_left_ms <= 5:
         return 0.0
     clock = time_left_ms / 1000.0
     if clock >= 10.0:
         return min(2.0, max(0.68, clock / 60.0), max(0.0, clock - 0.003))
-    return min(0.68, max(0.002, clock / 25.0), max(0.0, clock - 0.003))
+    # Short-clock arena: divide the remaining time by an estimate of the moves
+    # still to play (fewer pieces imply fewer remaining moves) so endgames keep
+    # useful thinking time instead of collapsing to a flat fraction of a
+    # shrinking clock. The moves-to-go floor keeps every allocation a small
+    # slice of the clock, so repeated spending cannot flag.
+    usable = max(0.0, clock - 0.01)
+    moves_to_go = max(12, min(36, chess.popcount(board.occupied) + 4))
+    target = usable / moves_to_go + 0.03
+    return min(0.68, max(0.002, target), usable)
 
 
 def get_move(fen: str, time_left_ms: int) -> str:
@@ -319,7 +327,7 @@ def get_move(fen: str, time_left_ms: int) -> str:
     if not moves:
         raise ValueError("get_move called for a terminal position")
     best = moves[0]
-    budget = _budget_seconds(time_left_ms)
+    budget = _budget_seconds(time_left_ms, board)
     if budget == 0.0 or len(moves) == 1:
         return best.uci()
 
