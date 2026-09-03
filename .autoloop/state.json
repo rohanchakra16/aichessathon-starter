@@ -1,6 +1,6 @@
 {
   "champion_commit": "4a0c988009ecae163ac09368f92e4a792dac7568",
-  "last_completed_experiment": "exp-0089",
+  "last_completed_experiment": "exp-0090",
   "live_submission": {
     "artifact_sha256": "e46046749bf41c13da3328e7029897907a12f0a9e91e0afa950faa2a5f654095",
     "champion_commit": "1b07bbed0a5837a115f47c4546c760ad8ab88183",
@@ -11,7 +11,7 @@
     "validated_at": "2026-09-03T11:25:36Z",
     "version": 2
   },
-  "next_experiment": 90,
+  "next_experiment": 91,
   "schema_version": 1,
   "submission_candidate": null
 }
