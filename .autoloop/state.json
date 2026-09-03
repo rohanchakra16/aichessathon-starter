@@ -13,5 +13,11 @@
   },
   "next_experiment": 94,
   "schema_version": 1,
-  "submission_candidate": null
+  "submission_candidate": {
+    "artifact_sha256": "55fec84c6dabf74645dd05593525f64d41240214e336b6162e82201f75137b7b",
+    "champion_commit": "4a0c988009ecae163ac09368f92e4a792dac7568",
+    "evaluated_main_commit": "4631377315af5fbabdb2bee99320f77178e7669d",
+    "release_record": "releases/4631377315af-33814366856.json",
+    "validated_at": "2026-09-03T22:46:36.953322+00:00"
+  }
 }
