@@ -16,3 +16,5 @@
 {"at": "2026-09-03T22:06:30.061224+00:00", "event": "audit", "after_experiment": "exp-0090", "decision": "CONTINUE", "stop_condition": null, "audit_path": "audit-20260903T220630Z-exp-0090.json", "next_direction_title": "Passed-pawn advancement term in the leaf evaluation"}
 {"at": "2026-09-03T22:16:48.415562+00:00", "event": "batch", "experiments": ["exp-0091"], "promotion": false, "infra_error": null}
 {"at": "2026-09-03T22:19:22.093694+00:00", "event": "audit", "after_experiment": "exp-0091", "decision": "CONTINUE", "stop_condition": null, "audit_path": "audit-20260903T221922Z-exp-0091.json", "next_direction_title": "Rook on open / half-open file term in the leaf evaluation"}
+{"at": "2026-09-03T22:28:58.058287+00:00", "event": "batch", "experiments": ["exp-0092"], "promotion": false, "infra_error": null}
+{"at": "2026-09-03T22:31:34.048769+00:00", "event": "audit", "after_experiment": "exp-0092", "decision": "CONTINUE", "stop_condition": null, "audit_path": "audit-20260903T223134Z-exp-0092.json", "next_direction_title": "Doubled and isolated pawn-structure penalty in the leaf evaluation"}
