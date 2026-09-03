@@ -200,6 +200,29 @@ def bounded_generator_summary(value: Any, limit: int = 600) -> str:
     return summary[:limit]
 
 
+def supervisor_directive(worktree: Path) -> str:
+    """Optional research direction from the external Claude evidence-audit loop.
+
+    ``claude_supervisor.py`` writes ``research/next-direction.md`` after each
+    between-batch audit. It only steers which hypothesis the candidate explores;
+    evaluation, reliability gating and promotion stay entirely with this
+    controller and the protected framework. Absent or empty file: no directive.
+    """
+    path = worktree / "research/next-direction.md"
+    if not path.exists():
+        return ""
+    text = path.read_text().strip()
+    if not text:
+        return ""
+    return (
+        "\n\nBetween-batch supervising-researcher directive (from the Claude "
+        "evidence audit). Pursue this research direction unless the evidence "
+        "digest already shows it exhausted. It does not change evaluation, "
+        "reliability or promotion, which remain the controller's:\n"
+        f"{text[:6000]}\n"
+    )
+
+
 def candidate_prompt(
     worktree: Path,
     experiment_id: str,
@@ -233,7 +256,7 @@ depth, or other parameter is not a new hypothesis. Before editing, compare your
 mechanism with every digest line and choose a materially different direction.
 Inspect only the specific retained experiment records or losing-game evidence
 needed for that hypothesis. Do not perform broad parameter sweeps manually.
-
+{supervisor_directive(worktree)}
 Hard requirements: get_move must always return a legal UCI move under the real
 clock; one CPU, 2 GB RAM, no network/GPU; readable source; no existing engine or
 wrapper. The repository-trained model must continue to materially determine
