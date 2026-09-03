@@ -44,6 +44,11 @@ SEE_VALUES = (0, 100, 320, 330, 500, 900, 20_000)
 
 _deadline = math.inf
 _nodes = 0
+# Length of ``board.move_stack`` at the current search root. Nodes deeper than
+# this are inside the search tree, where the first in-tree recurrence of a
+# position is already a guaranteed draw by repetition and should be scored 0.0
+# so alpha-beta can steer away one cycle earlier than an on-board threefold.
+_root_ply = 0
 _tt: dict[tuple[object, int, int], tuple[float, int]] = {}
 
 
@@ -191,12 +196,19 @@ def _forced_draw(board: chess.Board) -> bool:
     regenerates and plays every legal move at every node. Checking the halfmove
     clock, insufficient material, and an actual repetition covers the same draws
     the search needs while leaving far more time for deeper iterations.
+
+    Past the search root a position that has already occurred once before in the
+    combined game + search move stack is a forced draw: with best play either
+    side can claim the threefold, so the second occurrence is the right moment
+    for the search to recognise it. At or above the root the stricter
+    ``is_repetition(3)`` is kept so iterative deepening always yields a move even
+    when the root itself already repeats earlier game history.
     """
-    return (
-        board.halfmove_clock >= 100
-        or board.is_repetition(3)
-        or board.is_insufficient_material()
-    )
+    if board.halfmove_clock >= 100 or board.is_insufficient_material():
+        return True
+    if len(board.move_stack) > _root_ply:
+        return board.is_repetition(2)
+    return board.is_repetition(3)
 
 
 def _check_time() -> None:
@@ -351,7 +363,7 @@ def _budget_seconds(time_left_ms: int) -> float:
 
 def get_move(fen: str, time_left_ms: int) -> str:
     """Return a legal UCI move while retaining a conservative flag margin."""
-    global _deadline, _nodes
+    global _deadline, _nodes, _root_ply
     board = chess.Board(fen)
     moves = list(board.legal_moves)
     if not moves:
@@ -363,6 +375,7 @@ def get_move(fen: str, time_left_ms: int) -> str:
 
     _deadline = time.monotonic() + budget
     _nodes = 0
+    _root_ply = len(board.move_stack)
     for depth in range(1, MAX_DEPTH + 1):
         try:
             completed = _root_search(board, depth, best)
