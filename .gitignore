@@ -7,5 +7,6 @@ submission.zip
 .autoloop/worktrees/
 .autoloop/controller.lock
 .autoloop/controller.stop
+.autoloop/supervisor.stop
 .autoloop/artifacts/
 evaluation.json
