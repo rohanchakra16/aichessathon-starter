@@ -24,12 +24,14 @@ under 120+0.5, one core, that clearly beats the current protected champion (exp-
 - Opening books (`chess.polyglot`) and syzygy tablebases (`chess.syzygy`) permitted as shipped data <=50MB.
 - Source must be judge-readable; no obfuscation; no native binaries in the zip.
 
-## KEY BLOCKER for the >2000 path
-`.autoloop/protected/Dockerfile` (the promotion-CI image) installs only chess/mypy/numpy/pytest/ruff —
-**NO numba/onnxruntime/torch**. So a numba- or onnx-based agent CRASHES in the protected CI even though
-the real competition env has them. Decision needed from user: add numba(+onnxruntime) to that Dockerfile
-(protected change) OR keep Phineas 2 pure-Python (chess+numpy only) for the promotable path.
-=> Building pure-Python first (no approval needed, hits the 1800 min). numba = optional later upgrade.
+## KEY BLOCKER for the >2000 path — RESOLVED 2026-09-04
+User authorized ONE narrow protected change: add `numba==0.67.0` + `llvmlite==0.49.0` (its required
+compatible dep) to `.autoloop/protected/Dockerfile`, matching the real competition runtime. Done in
+commit `8e33e03` on `main` (own commit, previous version in history, protected_hash recomputed to
+`6b2de3b47d6c2460...`, 83 protected tests still pass). torch/onnxruntime intentionally NOT added —
+only on demonstrated + separately-approved need. Numba is now the primary hot-path target; the
+pure-Python fallback (`P2_NO_NUMBA=1`) stays as the correctness reference and a safety net if JIT
+init ever fails in the container.
 
 ## Current-engine profile (champion, under concurrent load; idle ~1.5-2x faster)
 | position    | depth@2s | nps    | q-frac | TT hit% |
@@ -46,8 +48,10 @@ near-zero cross-depth reuse. `MAX_DEPTH=8` hard cap. Time budget fixed 2.0s rega
 
 ## Plan (staged; correctness is an absolute gate at every stage)
 - P0  scaffolding: phineas2 branch, dev test/bench harness, perft harness, Stockfish sparring harness.
-- P1  fast board: pure-Python bitboard board, incremental Zobrist + PST + phase, make/unmake.
-      GATE: perft exact match vs python-chess to depth 5-6 on a standard suite; >=150k nps target.
+- P1  fast board: numba flat-array bitboard, incremental Zobrist + phase, make/unmake. DONE (`4205f10`).
+      GATE MET: exact perft startpos d6 / kiwipete d5 / pos3-6 d5-d7; differential vs python-chess on
+      1600 random + dedicated edge FENs; make/unmake restores every field incl Zobrist. ~8M nps perft
+      jitted, ~4.3s JIT warm-up. (PST arrays / incremental eval deferred to P4; phase is tracked live.)
 - P2  search core: iterative deepening PVS + aspiration; TT (hash-keyed, depth-in-entry, bucketed,
       no full clear); ordering = TT move / SEE captures (bitboard SEE) / 2 killers / history / countermove.
       GATE: WAC/ECM tactical suite solve rate up vs champion; deterministic node screens.
@@ -63,4 +67,9 @@ near-zero cross-depth reuse. `MAX_DEPTH=8` hard cap. Time budget fixed 2.0s rega
 
 ## STATUS
 - [x] reconciliation, rules, profiling, plan
-- [ ] P0 scaffolding
+- [x] protected Dockerfile numba parity (`8e33e03`, main)
+- [x] P0 scaffolding + P1 numba bitboard core, perft-validated (`4205f10`)
+- [ ] P2 search core — NEXT. njit negamax/PVS + iterative deepening + hash TT (no depth in key,
+      bucketed, no full clear) + move ordering (TT / MVV-LVA+SEE / killers / history). Eval stub =
+      material + tapered PST seeded from weights/model.json until P4. Gate: WAC/ECM solve-rate and
+      nps vs champion on identical FENs (target >=10x the ~30k midgame nps in the jitted hot path).
