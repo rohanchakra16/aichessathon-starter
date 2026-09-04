@@ -1,0 +1,378 @@
+{
+  "arena": {
+    "passed": false,
+    "skipped": true
+  },
+  "branch": "autoloop/candidate-0097",
+  "candidate_commit": "9c8437e6a5336366e71e17e38fc69b68661992c5",
+  "ci": {
+    "ablation_setup": {
+      "model_path": "weights/model.json",
+      "weights_zeroed": 776
+    },
+    "duration_seconds": 20.173,
+    "environment": {
+      "cpu_max": "100000 100000",
+      "cpu_quota_cores": 1.0,
+      "image_id": "sha256:46dc43456bde67949c6fea751406964013f37b338003257e0570cb26963c82a5",
+      "memory_limit_bytes": 2147483648,
+      "memory_max": "2147483648",
+      "network_disabled": true,
+      "network_probe_errno": 101,
+      "passed": true,
+      "pids_limit": 128,
+      "pids_max": "128",
+      "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.36",
+      "problems": [],
+      "python": "3.12.11",
+      "tmp_limit_bytes": 268435456,
+      "tmp_writable": true,
+      "workspace_read_only": true
+    },
+    "mode": "candidate",
+    "model_move_ablation": {
+      "comparisons": [
+        {
+          "ablated": "d2d4",
+          "candidate": "b1c3",
+          "opening": "open-game"
+        },
+        {
+          "ablated": "d1d3",
+          "candidate": "d1a4",
+          "opening": "queens-gambit"
+        },
+        {
+          "ablated": "d2d4",
+          "candidate": "d1a4",
+          "opening": "english"
+        },
+        {
+          "ablated": "d2d4",
+          "candidate": "b1c3",
+          "opening": "reti"
+        },
+        {
+          "ablated": "d2d4",
+          "candidate": "b1c3",
+          "opening": "sicilian"
+        },
+        {
+          "ablated": "d1f3",
+          "candidate": "f1b5",
+          "opening": "french"
+        },
+        {
+          "ablated": "d1d3",
+          "candidate": "c1g5",
+          "opening": "kings-indian"
+        },
+        {
+          "ablated": "d1f3",
+          "candidate": "c1g5",
+          "opening": "caro-kann"
+        },
+        {
+          "ablated": "d1f3",
+          "candidate": "b1c3",
+          "opening": "scandinavian"
+        },
+        {
+          "ablated": "c1f4",
+          "candidate": "c1g5",
+          "opening": "pirc"
+        },
+        {
+          "ablated": "d1d3",
+          "candidate": "c1g5",
+          "opening": "dutch"
+        },
+        {
+          "ablated": "d1d3",
+          "candidate": "c1g5",
+          "opening": "nimzo-indian"
+        },
+        {
+          "ablated": "d1d3",
+          "candidate": "c1g5",
+          "opening": "slav"
+        },
+        {
+          "ablated": "d2d4",
+          "candidate": "b1c3",
+          "opening": "petroff"
+        },
+        {
+          "ablated": "d1f3",
+          "candidate": "f1b5",
+          "opening": "alekhine"
+        },
+        {
+          "ablated": "d2d4",
+          "candidate": "d1e2",
+          "opening": "four-knights"
+        },
+        {
+          "ablated": "c1f4",
+          "candidate": "d1a4",
+          "opening": "grunfeld"
+        },
+        {
+          "ablated": "d1d3",
+          "candidate": "c1g5",
+          "opening": "queens-indian"
+        },
+        {
+          "ablated": "d1d3",
+          "candidate": "d1d3",
+          "opening": "benoni"
+        },
+        {
+          "ablated": "d1d3",
+          "candidate": "d1a4",
+          "opening": "catalan"
+        },
+        {
+          "ablated": "d1d3",
+          "candidate": "d1d3",
+          "opening": "london"
+        },
+        {
+          "ablated": "h7h6",
+          "candidate": "b8c6",
+          "opening": "trompowsky"
+        },
+        {
+          "ablated": "b1c3",
+          "candidate": "b1c3",
+          "opening": "bird"
+        },
+        {
+          "ablated": "d1h5",
+          "candidate": "d1h5",
+          "opening": "kings-gambit"
+        },
+        {
+          "ablated": "d7d5",
+          "candidate": "c6b4",
+          "opening": "evans-gambit"
+        },
+        {
+          "ablated": "d2d4",
+          "candidate": "b1c3",
+          "opening": "italian"
+        },
+        {
+          "ablated": "d2d4",
+          "candidate": "b5c6",
+          "opening": "ruy-lopez"
+        },
+        {
+          "ablated": "b1c3",
+          "candidate": "d4e5",
+          "opening": "philidor"
+        },
+        {
+          "ablated": "b1c3",
+          "candidate": "d4c6",
+          "opening": "accelerated-dragon"
+        },
+        {
+          "ablated": "d1f3",
+          "candidate": "d4b5",
+          "opening": "scheveningen"
+        },
+        {
+          "ablated": "c1f4",
+          "candidate": "e4e5",
+          "opening": "classical-french"
+        },
+        {
+          "ablated": "d1f3",
+          "candidate": "c1g5",
+          "opening": "advance-caro"
+        }
+      ],
+      "differences": 28,
+      "failures": [],
+      "minimum_differences": 8,
+      "passed": true,
+      "positions": 32
+    },
+    "mypy": {
+      "command": [
+        "mypy"
+      ],
+      "duration_seconds": 1.393,
+      "passed": true,
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "Success: no issues found in 9 source files\n"
+    },
+    "package": {
+      "compressed_bytes": 15392,
+      "expanded_bytes": 42971,
+      "members": [
+        "agent.py",
+        "weights/model.json"
+      ],
+      "sha256": "8649ac48ea06910c8eda4fa541c8cf15e63da1d20f2543b934f96c7fcb6d4cd0"
+    },
+    "package_problems": [],
+    "packaged_files": [
+      "agent.py",
+      "weights/model.json"
+    ],
+    "passed": false,
+    "policy_tests": {
+      "command": [
+        "pytest",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "tests/autoloop"
+      ],
+      "duration_seconds": 1.412,
+      "passed": false,
+      "returncode": 1,
+      "stderr": "",
+      "stdout": "..................................................................F..... [ 87%]\n..........                                                               [100%]\n=================================== FAILURES ===================================\n_________ test_splice_into_agent_is_idempotent_and_wires_the_residual __________\n\n    def test_splice_into_agent_is_idempotent_and_wires_the_residual() -> None:\n        source = (controller.ROOT / \"agent.py\").read_text()\n        once = controller.splice_residual_block(source, AGENT_FEATURE_SOURCE, AGENT_RESIDUAL_GLUE)\n        twice = controller.splice_residual_block(once, AGENT_FEATURE_SOURCE, AGENT_RESIDUAL_GLUE)\n        assert once == twice\n        assert controller.RESIDUAL_BEGIN in once\n        assert \"_positional_residual(board)\" in once\n        assert once.count(\"return BIAS + score\") == 1\n>       assert \"_positional_residual\" not in source\nE       assert '_positional_residual' not in '\"\"\"Readable...best.uci()\\n'\nE         \nE         '_positional_residual' is contained here:\nE           T:]\nE           \nE           \nE           def _positional_residual(board: chess.Board) -> float:\nE         ?     ++++++++++++++++++++...\nE         \nE         ...Full output truncated (342 lines hidden), use '-vv' to show\n\ntests/autoloop/test_positional_training.py:89: AssertionError\n=========================== short test summary info ============================\nFAILED tests/autoloop/test_positional_training.py::test_splice_into_agent_is_idempotent_and_wires_the_residual\n1 failed, 81 passed in 0.96s\n"
+    },
+    "resources": {
+      "memory_current_bytes": 28983296,
+      "memory_limit_bytes": 2147483648,
+      "memory_peak_bytes": 121151488,
+      "passed": true
+    },
+    "ruff": {
+      "command": [
+        "ruff",
+        "check",
+        "."
+      ],
+      "duration_seconds": 0.026,
+      "passed": true,
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "All checks passed!\n"
+    },
+    "schema_version": 2,
+    "smoke": {
+      "failures": [],
+      "outcomes": [
+        {
+          "result": "white",
+          "termination": "checkmate"
+        },
+        {
+          "result": "black",
+          "termination": "checkmate"
+        }
+      ],
+      "passed": true
+    },
+    "started_at_epoch": 1788509645.045092,
+    "static_problems": [],
+    "stress": {
+      "failures": [],
+      "init_seconds": 0.147473,
+      "max_move_seconds": 1.195116,
+      "passed": true,
+      "positions_checked": 6,
+      "timings": [
+        {
+          "clock_ms": 1,
+          "elapsed_seconds": 0.0001930290000018431,
+          "limit_seconds": 0.75
+        },
+        {
+          "clock_ms": 25,
+          "elapsed_seconds": 0.002810499999995386,
+          "limit_seconds": 0.75
+        },
+        {
+          "clock_ms": 100,
+          "elapsed_seconds": 0.00526843000000099,
+          "limit_seconds": 0.75
+        },
+        {
+          "clock_ms": 1000,
+          "elapsed_seconds": 0.04043902899999807,
+          "limit_seconds": 0.75
+        },
+        {
+          "clock_ms": 120000,
+          "elapsed_seconds": 1.1951164649999981,
+          "limit_seconds": 2.25
+        },
+        {
+          "clock_ms": 100,
+          "elapsed_seconds": 0.005954470999995465,
+          "limit_seconds": 0.75
+        }
+      ]
+    }
+  },
+  "completed_at": "2026-09-04T08:14:34.862534+00:00",
+  "consecutive_non_improvements": 7,
+  "decision_reason": "protected compliance/correctness evaluation failed",
+  "generator": "claude-retrain",
+  "id": "exp-0097",
+  "independent_validation": {
+    "baseline_margin_rmse": 232.805010688491,
+    "baseline_mrr": 0.5490397805212613,
+    "baseline_top1": 0.2839506172839506,
+    "candidate_margin_rmse": 231.88623318826376,
+    "candidate_mrr": 0.5490397805212613,
+    "candidate_top1": 0.2839506172839506,
+    "dataset_sha256": "8eb497a6ab16c09c01af22d26f9f70c0bbe21ee7af4a2d2bc86a747a83d23236",
+    "validation_groups": 243
+  },
+  "model_kind": "frozen_psqt_with_positional_endgame_residual",
+  "protected_hash": "3d55b04526b0ab8270e5f52e926a6ed9822647705893425d106d624ded6522c6",
+  "residual_coefficients": {
+    "connected_pawns": 0.0,
+    "doubled_pawns": -0.4220950198898732,
+    "isolated_pawns": -0.7104477379494332,
+    "king_centralisation": 0.08652263255115904,
+    "king_pawn_proximity": 0.0,
+    "king_tropism_decided": 3.2389586923651397,
+    "passed_pawn_advance": 0.6788403680738874,
+    "passed_pawn_count": 0.0,
+    "progress_gradient": 0.0,
+    "rook_behind_passer": 0.015357070580038034
+  },
+  "retrain_datasets": {
+    "training": {
+      "path": "training/data/positional_teacher_train.json",
+      "sha256": "4ba727183a3b67849cbc0fdff5d76de908c21433e1e1b284cf7977e8d0683e9f"
+    },
+    "validation": {
+      "path": "training/data/positional_teacher_validation.json",
+      "sha256": "de42b19485f9e5f2d80265b6091412b10a0eff6abe6e7e58c5a0560c433b9e72"
+    }
+  },
+  "retrain_entrypoint": "training/train_positional_evaluator.py",
+  "retrain_entrypoint_sha256": "296a15650c423b23517fc795c5b98be42e41bb5f79a51561c22cf66b8b5edb13",
+  "retrain_seed": 20260904,
+  "schema_version": 1,
+  "selected_cross_validation": {
+    "baseline_margin_rmse": 204.1575008706778,
+    "baseline_mrr": 0.5663368848300353,
+    "baseline_top1": 0.3028919330289193,
+    "candidate_margin_rmse": 203.90786749538674,
+    "candidate_mrr": 0.5670979198376457,
+    "candidate_top1": 0.30441400304414,
+    "fold_count": 4,
+    "validation_groups": 657,
+    "validation_pairs": 1674
+  },
+  "started_at": "2026-09-04T08:13:18.242369+00:00",
+  "status": "rejected",
+  "workflow": {
+    "run_id": 33852396797,
+    "run_url": "https://github.com/rohanchakra16/aichessathon-starter/actions/runs/33852396797",
+    "wait_seconds": 73.093,
+    "workflow_conclusion": "failure"
+  }
+}
