@@ -30,15 +30,37 @@
   ],
   "submission": {
     "expanded_size_limit_bytes": 50000000,
-    "required_root_files": ["agent.py"],
+    "required_root_files": [
+      "agent.py"
+    ],
     "native_binary_suffixes": [
-      ".a", ".bin", ".dll", ".dylib", ".exe", ".o", ".so", ".whl"
+      ".a",
+      ".bin",
+      ".dll",
+      ".dylib",
+      ".exe",
+      ".o",
+      ".so",
+      ".whl"
     ],
     "forbidden_shadow_names": [
-      "chess.py", "json.py", "math.py", "os.py", "random.py", "sys.py", "types.py"
+      "chess.py",
+      "json.py",
+      "math.py",
+      "os.py",
+      "random.py",
+      "sys.py",
+      "types.py"
     ],
     "forbidden_source_terms": [
-      "stockfish", "lc0", "leela chess zero", "maia", "subprocess", "socket", "urllib", "requests"
+      "stockfish",
+      "lc0",
+      "leela chess zero",
+      "maia",
+      "subprocess",
+      "socket",
+      "urllib",
+      "requests"
     ]
   },
   "reliability": {
@@ -47,7 +69,13 @@
     "max_single_move_seconds_by_clock": {
       "120000": 2.25
     },
-    "stress_time_left_ms": [1, 25, 100, 1000, 120000],
+    "stress_time_left_ms": [
+      1,
+      25,
+      100,
+      1000,
+      120000
+    ],
     "required_failures": 0
   },
   "environment": {
@@ -104,7 +132,10 @@
   },
   "clock_sensitive_promotion": {
     "require_ci_passed": true,
-    "allowed_fast_arena_decisions": ["accept", "inconclusive"],
+    "allowed_fast_arena_decisions": [
+      "accept",
+      "inconclusive"
+    ],
     "real_clock_settings_key": "prospective_real_clock_arena",
     "required_real_clock_decision": "accept"
   },
@@ -129,17 +160,19 @@
   },
   "retrain": {
     "enabled": true,
-    "allowed_entrypoints": ["training/train_positional_evaluator.py"],
+    "allowed_entrypoints": [
+      "training/train_positional_evaluator.py"
+    ],
     "timeout_seconds": 2400,
     "seed": 20260904,
     "datasets": {
       "training": {
         "path": "training/data/positional_teacher_train.json",
-        "sha256": null
+        "sha256": "4ba727183a3b67849cbc0fdff5d76de908c21433e1e1b284cf7977e8d0683e9f"
       },
       "validation": {
         "path": "training/data/positional_teacher_validation.json",
-        "sha256": null
+        "sha256": "de42b19485f9e5f2d80265b6091412b10a0eff6abe6e7e58c5a0560c433b9e72"
       }
     },
     "leakage_controls": {
