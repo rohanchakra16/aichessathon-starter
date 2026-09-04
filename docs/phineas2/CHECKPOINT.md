@@ -145,13 +145,27 @@ near-zero cross-depth reuse. `MAX_DEPTH=8` hard cap. Time budget fixed 2.0s rega
 - [x] P4 candidate 3 (`bd6e8f6`): king safety (pawn-shield proxy) + development, both phase-scaled the
       same direction as the mg/eg PST blend. ACCEPTED as **phineas2-champion-v3-kingsafety-dev**:
       +11 =3 -6, score=0.625, 95% CI [0.431, 0.819], 0 failures.
-- [ ] P4 candidate 4 (passed pawns, phase-scaled the *opposite* direction -- more weight toward the
-      endgame): implemented, sanity-checked directly, correctness suite clean. Ablation next.
-- [ ] NEXT after candidate 4's ablation: P4 candidate 5 (true bitboard mobility, done properly, tried
-      last per the user's order since the old mobility term was net harmful) if candidates worth adding
-      remain; king activity was considered as part of candidate 4 but deferred -- the trained PST_EG
-      table already differentiates king squares by endgame value, so an explicit centralisation term
-      risks double-counting rather than adding a genuinely new signal the way passed pawns does.
-      Then Step 6: 24-40 games at 120+0.5 vs Stockfish 1800 (compare against the Step 3 baseline
-      number above), screen 2000 only if competitive, 2200 only if competitive at 2000. Then Step 8
-      (opening book, tablebase, retrained compact evaluator) if the ladder still has room to climb.
+- [x] P4 candidate 4 (`9b45cb4`): passed pawns, phase-scaled the *opposite* direction from candidate 3
+      -- more weight toward the endgame, since converting a passed pawn is an endgame concern. A flat
+      PST cannot express this (depends on where the *other* pawns are). ACCEPTED as
+      **phineas2-champion-v4-passedpawn**: +12 =4 -4, score=0.700, 95% CI [0.525, 0.875], 0 failures --
+      first candidate whose CI lies entirely above 0.5. King activity was considered alongside this one
+      and deliberately deferred: PST_EG already differentiates king squares by endgame value, so an
+      explicit centralisation term risked double-counting rather than adding a new signal.
+- [x] P4 candidate 5 (`f6208fb`, last per the user's order, highest risk given the champion's own
+      mobility term was previously found net harmful): properly-weighted bitboard mobility --
+      per-piece-type weights (knight/bishop 4cp, rook 2cp, queen 1cp per reachable non-own square,
+      reusing the search's own attack generators, no second per-square pass) instead of one flat
+      weight dominated by queen-mobility noise, and no unrelated material-calibration bug for it to
+      fight (PST_MG/PST_EG already carry the trained material faithfully). ACCEPTED as
+      **phineas2-champion-v5-mobility**: +17 =0 -3, score=0.850, 95% CI [0.694, 1.000], 0 failures --
+      the strongest single-candidate result of the sequence.
+- [x] **P4 COMPLETE.** All five of the user's named priority items resolved: (1) SEE accepted,
+      (2) repetition preference rejected (docs/phineas2/rejected-experiments.md), (3) king safety +
+      development accepted, (4) passed pawns accepted, (5) mobility accepted. Current internal champion:
+      **phineas2-champion-v5-mobility**, HEAD of the `phineas2` branch.
+- [ ] NEXT: Step 6, a larger 24-40 game exact-clock (120+0.5) confirmation vs Stockfish elo 1800,
+      compared against the Step 3 baseline number above (phineas2-baseline-p1p3: score=0.464). Then
+      screen 2000 only if competitive at 1800, 2200 only if competitive at 2000 -- do not spend a large
+      batch at a level a small screen already shows is clearly outmatched. Then Step 8 (opening book,
+      tablebase, retrained compact evaluator) if the ladder still has room to climb.
