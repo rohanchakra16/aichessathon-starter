@@ -49,11 +49,27 @@ effect** on evaluation, reliability gating, the arena, or promotion — those st
 entirely with the controller and the protected framework. If the file is absent
 or empty the prompt is exactly as before.
 
+## The `learned-evaluator-retrain` family
+
+When an audit returns `next_direction.family == "learned-evaluator-retrain"`, the
+supervisor runs the batch as
+`controller.py --retrain-entrypoint training/train_positional_evaluator.py`. That
+path is **deterministic — no `claude -p` in the candidate**: the controller
+splices the trainer's canonical feature source into `agent.py` between markers,
+runs the whitelisted offline trainer to refit only a bounded positional/endgame
+residual on the frozen 770-weight PSQT (`weights/model.json` schema 7), and
+commits `{agent.py, weights/model.json}`. Evaluation, ablation, reliability,
+arena and promotion downstream are unchanged. `retrain_blocker()` refuses the
+family (safe stop) until `policy.retrain.datasets` sha256 are pinned and match
+the committed `training/data/` files. See
+`docs/autoloop/retrain-family-proposal.md`.
+
 ## Stop conditions
 
 | Condition | Exit | State |
 | --- | --- | --- |
 | Claude audit returns `STOP` (`scientific_saturation` / `infrastructure_blocker`) | 0 | preserved, direction/trail committed |
+| Audit picked `learned-evaluator-retrain` but `policy.retrain.datasets` are not pinned | 0 | preserved; pin the sha256 and re-run |
 | Claude Code unavailable — auth, usage limit, transport, or missing schema output | 20 | preserved, **no batch run** |
 | `--max-infra-failures` consecutive controller infrastructure failures (default 2) | 30 | preserved |
 | `.autoloop/supervisor.stop` file present (checked each cycle) | 0 | preserved |
