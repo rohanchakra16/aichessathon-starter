@@ -35,11 +35,14 @@ TT_LOWER = 1
 TT_UPPER = 2
 LMR_MIN_DEPTH = 3
 LMR_QUIET_INDEX = 4
-# Centipawns per net square attacked by a non-king piece. Kept deliberately
-# small (a typical ~10-square differential is ~0.3 pawn, far below the model's
-# ~170 cp margin RMSE) so the trained piece-square model stays dominant while
-# the search gains a monotone reason to prefer active moves over shuffling.
-MOBILITY_WEIGHT = 3.0
+# Centipawn material values indexed by piece type (king = 0). The trained
+# piece-square model encodes material only weakly (~60 cp/pawn) and with the
+# wrong sign in some simplified endgames, so an explicit, untapered material
+# term is added to _model_evaluate as the primary reliable signal. The scale is
+# the single tuning knob; 1.0 = conventional values. The largest possible
+# contribution (~4000) is far below MATE, so no search threshold is affected.
+MATERIAL_SCALE = 1.0
+MATERIAL_VALUES = tuple(MATERIAL_SCALE * value for value in (0, 100, 320, 330, 500, 900, 0))
 SEE_VALUES = (0, 100, 320, 330, 500, 900, 20_000)
 
 _deadline = math.inf
@@ -52,30 +55,27 @@ class SearchTimeout(Exception):
 
 
 def _model_evaluate(board: chess.Board) -> float:
-    """Taper the learned piece-square model by remaining material phase."""
+    """Learned tapered piece-square model plus an explicit material term."""
     side = board.turn
     midgame = 0.0
     endgame = 0.0
     phase = 0
-    mobility = 0.0
+    material = 0.0
     for colour, sign in ((side, 1.0), (not side, -1.0)):
         for piece_type in range(chess.PAWN, chess.KING + 1):
             squares = board.pieces(piece_type, colour)
-            phase += PHASE_VALUES[piece_type] * len(squares)
+            count = len(squares)
+            phase += PHASE_VALUES[piece_type] * count
+            material += sign * MATERIAL_VALUES[piece_type] * count
             offset = (piece_type - 1) * 64
             for square in squares:
                 relative = square if colour == chess.WHITE else chess.square_mirror(square)
                 midgame += sign * WEIGHTS[offset + relative]
                 endgame += sign * WEIGHTS[ENDGAME_OFFSET + offset + relative]
-                if piece_type != chess.KING:
-                    # attacks_mask returns a plain int bitboard, so this adds no
-                    # per-leaf object allocation and reuses the piece loop rather
-                    # than generating moves a second time.
-                    mobility += sign * chess.popcount(board.attacks_mask(square))
 
     blend = min(1.0, phase / MAX_PHASE)
     score = blend * midgame + (1.0 - blend) * endgame
-    score += MOBILITY_WEIGHT * mobility
+    score += material
     if board.has_kingside_castling_rights(side):
         score += WEIGHTS[CASTLING_OFFSET]
     if board.has_kingside_castling_rights(not side):
