@@ -34,7 +34,7 @@ def solve(ms: float) -> None:
     for fen, best, name in TACTICS:
         p = Position.from_fen(fen)
         t = time.perf_counter()
-        mv, sc, nodes = s.search(p, time_ms=ms)
+        mv, sc, nodes, _d = s.search(p, time_ms=ms)
         dt = time.perf_counter() - t
         good = mv in best
         ok += good
@@ -49,7 +49,7 @@ def bench(ms: float) -> None:
         s.new_game()
         p = Position.from_fen(fen)
         t = time.perf_counter()
-        mv, sc, nodes = s.search(p, time_ms=ms)
+        mv, sc, nodes, _d = s.search(p, time_ms=ms)
         dt = time.perf_counter() - t
         # find reached depth
         d = 0

@@ -51,7 +51,6 @@ def play_game(engine: chess.engine.SimpleEngine, p2_white: bool,
     searcher.new_game()
     root_keys: list[int] = []
     clocks = {chess.WHITE: base_ms, chess.BLACK: base_ms}
-    sf_side = chess.BLACK if p2_white else chess.WHITE
     p2_side = chess.WHITE if p2_white else chess.BLACK
 
     while not board.is_game_over(claim_draw=True) and board.ply() < ply_cap:
@@ -64,7 +63,7 @@ def play_game(engine: chess.engine.SimpleEngine, p2_white: bool,
             prefix = (np.asarray(root_keys[:-1], dtype=np.uint64)
                       if len(root_keys) > 1 else None)
             budget = max(20.0, min(clocks[stm] / 25.0 + 400.0, clocks[stm] * 0.5))
-            uci, _sc, _n = searcher.search(pos, time_ms=budget, hist_prefix=prefix)
+            uci, _sc, _n, _d = searcher.search(pos, time_ms=budget, hist_prefix=prefix)
             move = chess.Move.from_uci(uci)
         else:
             limit = chess.engine.Limit(
@@ -107,8 +106,10 @@ def main() -> None:
     engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH)
     engine.configure({"UCI_LimitStrength": True, "UCI_Elo": args.elo, "Threads": 1})
 
+    clock_note = ("COMPETITION CLOCK" if args.base_ms >= 120000
+                  else "fast dev clock, not a competition-clock claim")
     print(f"Phineas2 vs Stockfish 18 (UCI_Elo={args.elo}, LimitStrength)  "
-          f"TC={args.base_ms}+{args.inc_ms}ms  ({'COMPETITION CLOCK' if args.base_ms >= 120000 else 'fast dev clock, not a competition-clock claim'})")
+          f"TC={args.base_ms}+{args.inc_ms}ms  ({clock_note})")
 
     w = d = losses = 0
     terms: dict[str, int] = {}
@@ -116,7 +117,9 @@ def main() -> None:
         for i in range(args.pairs):
             opening = OPENINGS[i % len(OPENINGS)]
             for p2_white in (True, False):
-                res, term = play_game(engine, p2_white, opening, args.base_ms, args.inc_ms, args.ply_cap)
+                res, term = play_game(
+                    engine, p2_white, opening, args.base_ms, args.inc_ms, args.ply_cap
+                )
                 terms[term] = terms.get(term, 0) + 1
                 if res == "draw":
                     d += 1
@@ -133,7 +136,8 @@ def main() -> None:
 
     n = w + d + losses
     score = (w + 0.5 * d) / n if n else 0.0
-    print(f"\nP2 vs Stockfish(elo={args.elo}): +{w} ={d} -{losses}   score {score:.3f}   ({n} games)")
+    print(f"\nP2 vs Stockfish(elo={args.elo}): +{w} ={d} -{losses}   "
+          f"score {score:.3f}   ({n} games)")
     print("terminations:", terms)
 
 

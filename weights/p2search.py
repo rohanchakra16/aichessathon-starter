@@ -77,7 +77,8 @@ class Searcher:
 
     # -- driver ---------------------------------------------------------- #
     def search(self, pos, max_depth: int = 64, time_ms: float = 1000.0,
-               hist_prefix: np.ndarray | None = None) -> tuple[str, int, int]:
+               hist_prefix: np.ndarray | None = None) -> tuple[str, int, int, int]:
+        """Returns (best_move_uci, score_cp, nodes, completed_depth)."""
         from weights.p2pos import move_to_uci
 
         self.generation = (self.generation + 1) & 0x7FFF
@@ -99,6 +100,7 @@ class Searcher:
 
         best_move = 0
         best_score = 0
+        completed_depth = 0
         try:
             for depth in range(1, max_depth + 1):
                 score = _search_root(
@@ -116,9 +118,11 @@ class Searcher:
                     if self.pv[0] != 0 and depth == 1:
                         best_move = int(self.pv[0])
                         best_score = int(score)
+                        completed_depth = 1
                     break
                 best_move = int(self.pv[0])
                 best_score = int(score)
+                completed_depth = depth
                 if abs(best_score) >= MATE_IN_MAX:
                     break
         finally:
@@ -138,7 +142,7 @@ class Searcher:
                     best_move = mv
                     break
 
-        return move_to_uci(best_move), best_score, int(self.nodes[0])
+        return move_to_uci(best_move), best_score, int(self.nodes[0]), completed_depth
 
 
 @njit(cache=False, nogil=True)

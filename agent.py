@@ -23,6 +23,11 @@ _SEARCHER = Searcher()
 _SEARCHER.new_game()
 _ROOT_KEYS: list[int] = []
 
+# Diagnostics from the most recent get_move call (score/nodes/depth). Not part
+# of the competition contract -- get_move still returns only the UCI string --
+# but harmless to keep for dev harnesses that want per-move search telemetry.
+LAST_INFO: dict[str, int] = {}
+
 
 def _warm_up() -> None:
     """Pay the numba JIT cost inside the import budget, not on the clock."""
@@ -65,10 +70,12 @@ def get_move(fen: str, time_left_ms: int) -> str:
 
     if budget <= 0.0:
         emergency = max(0.0, time_left_ms - 100.0)
-        move, _score, _nodes = _SEARCHER.search(
+        move, score, nodes, depth = _SEARCHER.search(
             pos, max_depth=1, time_ms=emergency, hist_prefix=prefix
         )
+        LAST_INFO.update(score=score, nodes=nodes, depth=depth, budget_ms=int(emergency))
         return move
 
-    move, _score, _nodes = _SEARCHER.search(pos, time_ms=budget, hist_prefix=prefix)
+    move, score, nodes, depth = _SEARCHER.search(pos, time_ms=budget, hist_prefix=prefix)
+    LAST_INFO.update(score=score, nodes=nodes, depth=depth, budget_ms=int(budget))
     return move
