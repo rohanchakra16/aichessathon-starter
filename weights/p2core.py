@@ -49,6 +49,9 @@ NOT_FILE_A = _t.NOT_FILE_A
 NOT_FILE_H = _t.NOT_FILE_H
 IDX_TYPE = np.array([1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6], dtype=np.int64)
 PHASE_W = np.array([0, 0, 1, 1, 2, 4, 0], dtype=np.int64)
+# canonical piece values by piece_type (1..6); index 0 unused. Shared by SEE
+# and by search move ordering so the two never drift apart.
+SEE_VAL = np.array([0, 100, 320, 330, 500, 900, 20000], dtype=np.int64)
 
 ONE = np.uint64(1)
 
@@ -148,6 +151,90 @@ def king_sq(bb, colour):
 def in_check(bb, occ, meta):
     us = meta[0]
     return is_attacked(bb, occ[2], king_sq(bb, us), 1 - us)
+
+
+@njit(cache=False)
+def _lva(bb, occ_all, sq, by):
+    """(square, piece_index) of `by`'s cheapest attacker of `sq`, or (-1, -1)."""
+    o = by * 6
+    b = PA[1 - by, sq] & bb[o]
+    if b:
+        return _lsb(b), o
+    b = KN[sq] & bb[o + 1]
+    if b:
+        return _lsb(b), o + 1
+    b = _bishop_att(sq, occ_all) & bb[o + 2]
+    if b:
+        return _lsb(b), o + 2
+    b = _rook_att(sq, occ_all) & bb[o + 3]
+    if b:
+        return _lsb(b), o + 3
+    b = (_bishop_att(sq, occ_all) | _rook_att(sq, occ_all)) & bb[o + 4]
+    if b:
+        return _lsb(b), o + 4
+    b = KG[sq] & bb[o + 5]
+    if b:
+        return _lsb(b), o + 5
+    return -1, -1
+
+
+@njit(cache=False)
+def see(bb, occ_all, mbox, mv):
+    """Static Exchange Evaluation of the capture sequence on `mv`'s target
+    square, from the mover's point of view (positive = the mover nets
+    material once every profitable recapture is played out). Operates on a
+    scratch copy of the bitboards; never mutates the real position."""
+    frm = mv & 0x3F
+    to = (mv >> 6) & 0x3F
+    kind = (mv >> 15) & 0xF
+    promo = (mv >> 12) & 0x7
+
+    bbl = bb.copy()
+    occl = occ_all
+
+    mover_idx = mbox[frm]
+    us = 0 if mover_idx < 6 else 1
+
+    if kind == 5:
+        cap_sq = to - 8 if us == 0 else to + 8
+        cap_idx = mbox[cap_sq]
+    else:
+        cap_sq = to
+        cap_idx = mbox[to]
+
+    gain = np.zeros(32, dtype=np.int64)
+    d = 0
+    gain[0] = SEE_VAL[IDX_TYPE[cap_idx]] if cap_idx != PIECE_NONE else 0
+
+    if cap_idx != PIECE_NONE:
+        m = ONE << np.uint64(cap_sq)
+        bbl[cap_idx] ^= m
+        occl ^= m
+
+    attacker_idx = mover_idx if promo == 0 else us * 6 + (promo - 1)
+    bbl[mover_idx] ^= ONE << np.uint64(frm)
+    occl ^= ONE << np.uint64(frm)
+    occl |= ONE << np.uint64(to)
+
+    side = 1 - us
+    val = SEE_VAL[IDX_TYPE[attacker_idx]]
+    while True:
+        sq2, atk_idx = _lva(bbl, occl, to, side)
+        if sq2 < 0:
+            break
+        d += 1
+        gain[d] = val - gain[d - 1]
+        if max(-gain[d - 1], gain[d]) < 0:
+            break
+        bbl[atk_idx] ^= ONE << np.uint64(sq2)
+        occl ^= ONE << np.uint64(sq2)
+        val = SEE_VAL[IDX_TYPE[atk_idx]]
+        side = 1 - side
+
+    while d > 0:
+        gain[d - 1] = -max(-gain[d - 1], gain[d])
+        d -= 1
+    return gain[0]
 
 
 @njit(cache=False)
