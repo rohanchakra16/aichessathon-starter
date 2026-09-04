@@ -39,6 +39,15 @@ PLY_LIMIT = _c.MAXPLY - 2
 # MVV-LVA: victim value * 8 - attacker value, victim/attacker by piece_type 1..6
 _PIECE_VAL = np.array([0, 100, 320, 330, 500, 900, 20000], dtype=np.int64)
 
+# Zobrist components needed for the null move (read as module globals by njit).
+_ZS = _c.Z_SIDE
+_ZEP = _c.Z_EP
+_EPN = _c.EP_NONE
+
+RFP_MARGIN = 85       # reverse-futility: eval - RFP_MARGIN*depth >= beta -> prune
+FUT_MARGIN = 120      # frontier futility for quiet moves
+NMP_MIN_PHASE = 3     # skip null move in near-zugzwang (very few pieces)
+
 
 class Searcher:
     """Owns the persistent search state (TT survives between moves in a game)."""
@@ -276,6 +285,15 @@ def _negamax(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob,
     if meta[3] >= 100:
         return 0
 
+    # mate-distance pruning
+    if ply > 0:
+        if -MATE + ply > alpha:
+            alpha = -MATE + ply
+        if MATE - ply < beta:
+            beta = MATE - ply
+        if alpha >= beta:
+            return alpha
+
     in_chk = _c.is_attacked(bb, occ[2], _c.king_sq(bb, us), 1 - us)
     if in_chk:
         depth += 1
@@ -307,6 +325,45 @@ def _negamax(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob,
             if alpha >= beta:
                 return s
 
+    non_pv = beta - alpha == 1
+    eval_static = _e.evaluate(mbox, meta, pst_mg, pst_eg, ck, cq, bias, maxph)
+
+    # reverse futility / static null-move pruning
+    if (non_pv and not in_chk and depth <= 6 and beta > -MATE_IN_MAX
+            and eval_static - RFP_MARGIN * depth >= beta):
+        return eval_static
+
+    # null-move pruning
+    if (non_pv and not in_chk and depth >= 3 and eval_static >= beta
+            and meta[5] > NMP_MIN_PHASE and beta > -MATE_IN_MAX):
+        s0 = meta[0]
+        s2 = meta[2]
+        s3 = meta[3]
+        sz = zob[0]
+        meta[0] = 1 - s0
+        if s2 != _EPN:
+            zob[0] ^= _ZEP[s2 & 7]
+            meta[2] = _EPN
+        zob[0] ^= _ZS
+        meta[3] = s3 + 1
+        r = 3 + depth // 6
+        nd = depth - 1 - r
+        if nd < 0:
+            nd = 0
+        null_score = -_negamax(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob,
+                               buf, mscore, killers, history, hist_keys, base,
+                               tt_key, tt_move, tt_score, tt_depth, tt_flag, tt_gen, gen,
+                               nodes, stop, ply + 1, nd, -beta, -beta + 1,
+                               pst_mg, pst_eg, ck, cq, bias, maxph)
+        meta[0] = s0
+        meta[2] = s2
+        meta[3] = s3
+        zob[0] = sz
+        if stop[0] != 0:
+            return 0
+        if null_score >= beta:
+            return beta
+
     n = _c.gen_moves(bb, occ, meta, buf[ply])
     _score_moves(mbox, buf, mscore, ply, n, tt_mv, killers, history)
 
@@ -314,31 +371,64 @@ def _negamax(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob,
     best_score = -INF
     best_move = np.int32(0)
     legal = 0
+    quiets_tried = 0
     for idx in range(n):
         mv = _pick_move(buf, mscore, ply, n, idx)
+        kind = (mv >> 15) & 0xF
+        is_quiet = kind == 0 or kind == 1 or kind == 6
+
+        # frontier futility pruning of quiet moves
+        if (is_quiet and legal >= 1 and depth <= 2 and not in_chk
+                and best_score > -MATE_IN_MAX
+                and eval_static + FUT_MARGIN * depth <= alpha):
+            quiets_tried += 1
+            continue
+
         _c.make(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob, ply, mv)
         if _c.is_attacked(bb, occ[2], _c.king_sq(bb, us), 1 - us):
             _c.unmake(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob, ply, mv)
             continue
         legal += 1
+        if is_quiet:
+            quiets_tried += 1
+
+        new_depth = depth - 1
+        # late move reduction
+        reduction = 0
+        if (depth >= 3 and legal >= 4 and is_quiet and not in_chk
+                and mv != killers[ply, 0] and mv != killers[ply, 1]):
+            reduction = 1
+            if quiets_tried >= 8:
+                reduction += 1
+            if depth >= 9:
+                reduction += 1
 
         if legal == 1:
             score = -_negamax(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob,
                               buf, mscore, killers, history, hist_keys, base,
                               tt_key, tt_move, tt_score, tt_depth, tt_flag, tt_gen, gen,
-                              nodes, stop, ply + 1, depth - 1, -beta, -alpha,
+                              nodes, stop, ply + 1, new_depth, -beta, -alpha,
                               pst_mg, pst_eg, ck, cq, bias, maxph)
         else:
+            rd = new_depth - reduction
+            if rd < 0:
+                rd = 0
             score = -_negamax(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob,
                               buf, mscore, killers, history, hist_keys, base,
                               tt_key, tt_move, tt_score, tt_depth, tt_flag, tt_gen, gen,
-                              nodes, stop, ply + 1, depth - 1, -alpha - 1, -alpha,
+                              nodes, stop, ply + 1, rd, -alpha - 1, -alpha,
                               pst_mg, pst_eg, ck, cq, bias, maxph)
+            if score > alpha and reduction > 0:
+                score = -_negamax(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob,
+                                  buf, mscore, killers, history, hist_keys, base,
+                                  tt_key, tt_move, tt_score, tt_depth, tt_flag, tt_gen, gen,
+                                  nodes, stop, ply + 1, new_depth, -alpha - 1, -alpha,
+                                  pst_mg, pst_eg, ck, cq, bias, maxph)
             if alpha < score < beta:
                 score = -_negamax(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob,
                                   buf, mscore, killers, history, hist_keys, base,
                                   tt_key, tt_move, tt_score, tt_depth, tt_flag, tt_gen, gen,
-                                  nodes, stop, ply + 1, depth - 1, -beta, -alpha,
+                                  nodes, stop, ply + 1, new_depth, -beta, -alpha,
                                   pst_mg, pst_eg, ck, cq, bias, maxph)
         _c.unmake(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob, ply, mv)
 
