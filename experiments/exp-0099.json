@@ -1267,6 +1267,22 @@
   "decision_reason": "sequential paired arena remained inconclusive (score 0.555, interval [0.482, 0.625])",
   "generator": "resumed-candidate",
   "id": "exp-0099",
+  "provenance_note": {
+    "actual_source": "human-authorized exact-diff candidate (Variant C material-calibration correction)",
+    "mechanism": "committed to a pre-created local branch autoloop/candidate-0099 and evaluated through the controller's resumed-candidate code path",
+    "not_an_interruption": true,
+    "nominal_fields": "the 'generator': 'resumed-candidate' and 'resumed_after_interruption': true fields reflect the code path, NOT an interrupted AI-generation run; no generator was invoked",
+    "candidate_commit": "090f18cfc9dda8ce10a13edd48fb32b93e74f3a7",
+    "change": "agent.py only - remove the exp-0089 MOBILITY_WEIGHT leaf term; add an explicit untapered centipawn material term (100/320/330/500/900) at MATERIAL_SCALE=1.0",
+    "authorized_by": "user, chat, 2026-09-04",
+    "pre_launch_verification_on_090f18c": {
+      "model_strength_ablation": "7-9-0, score 0.7188 (>= 0.625), 0 failed terminations",
+      "model_move_ablation": "26/32 differences (>= 8)",
+      "agent_stress": "pass, worst move 0.510 s",
+      "local": "ruff / mypy / pytest tests/autoloop clean; diagnostics 1/5 -> 4/5"
+    },
+    "annotation_added": "2026-09-04, post-hoc; arena / ci / decision fields unchanged"
+  },
   "protected_hash": "d678c89326ce7151b09c38818bf94b94e92c7014b7e99100eb24800b04966353",
   "resumed_after_interruption": true,
   "schema_version": 1,
