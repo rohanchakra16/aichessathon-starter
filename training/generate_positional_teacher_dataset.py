@@ -56,7 +56,9 @@ GENERATE_ARGS = [
 VALIDATION_FRACTION = 0.25
 
 
-def write_dataset(path: Path, base: dict[str, Any], rows: list[dict[str, Any]]) -> str:
+def write_dataset(
+    path: Path, base: dict[str, Any], rows: list[dict[str, Any]]
+) -> dict[str, str]:
     payload = {
         **{key: value for key, value in base.items() if key != "rows"},
         "rows": rows,
@@ -66,7 +68,10 @@ def write_dataset(path: Path, base: dict[str, Any], rows: list[dict[str, Any]]) 
         "split_fraction_validation": VALIDATION_FRACTION,
     }
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
-    return str(payload["dataset_sha256"])
+    # `file_sha256` is what policy.retrain.datasets pins and the controller
+    # re-checks; `dataset_sha256` is the order-independent row digest the trainer
+    # re-checks on load. Both are recorded.
+    return {"file_sha256": file_sha256(path), "row_digest": str(payload["dataset_sha256"])}
 
 
 def main() -> None:
@@ -113,8 +118,8 @@ def main() -> None:
 
     train_path = DATA_DIR / "positional_teacher_train.json"
     validation_path = DATA_DIR / "positional_teacher_validation.json"
-    train_sha = write_dataset(train_path, base, training_rows)
-    validation_sha = write_dataset(validation_path, base, validation_rows)
+    train_hashes = write_dataset(train_path, base, training_rows)
+    validation_hashes = write_dataset(validation_path, base, validation_rows)
 
     manifest = {
         "schema_version": 1,
@@ -134,13 +139,13 @@ def main() -> None:
             "path": str(train_path.relative_to(ROOT)),
             "rows": len(training_rows),
             "games": len(game_ids) - len(validation_games),
-            "sha256": train_sha,
+            **train_hashes,
         },
         "validation": {
             "path": str(validation_path.relative_to(ROOT)),
             "rows": len(validation_rows),
             "games": len(validation_games),
-            "sha256": validation_sha,
+            **validation_hashes,
         },
     }
     (DATA_DIR / "MANIFEST.json").write_text(
@@ -148,13 +153,17 @@ def main() -> None:
     )
 
     print("\nwrote:")
-    print(f"  {train_path.relative_to(ROOT)}  sha256={train_sha}")
-    print(f"  {validation_path.relative_to(ROOT)}  sha256={validation_sha}")
+    print(f"  {train_path.relative_to(ROOT)}")
+    print(f"  {validation_path.relative_to(ROOT)}")
     print(f"  {(DATA_DIR / 'MANIFEST.json').relative_to(ROOT)}")
     print(
-        "\npin these into .autoloop/protected/policy.json -> retrain.datasets:\n"
-        f'  training.sha256   = "{train_sha}"\n'
-        f'  validation.sha256 = "{validation_sha}"'
+        "\npin these file_sha256 values into "
+        ".autoloop/protected/policy.json -> retrain.datasets:\n"
+        f'  training.sha256   = "{train_hashes["file_sha256"]}"\n'
+        f'  validation.sha256 = "{validation_hashes["file_sha256"]}"\n'
+        "\nverify any time with:\n"
+        f"  shasum -a 256 {train_path.relative_to(ROOT)} "
+        f"{validation_path.relative_to(ROOT)}"
     )
 
 
