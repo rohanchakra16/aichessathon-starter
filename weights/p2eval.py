@@ -144,8 +144,55 @@ def _pawn_shield(mbox, king_sq, us):
     return shield
 
 
+# --- mobility (P4 candidate 5) --------------------------------------------- #
+# The champion's mobility term was found to be net harmful (A/B/C study,
+# exp-0099 workup): one flat weight for every piece including the queen (whose
+# attack count swings wildly and drowns out steadier signals), computed via a
+# second per-square attacks_mask() pass, fighting an unrelated material-
+# calibration bug in that codebase. None of those three problems apply
+# unchanged here -- this reuses the already-computed bitboard attack tables
+# (no extra pass), weights each piece type separately and much more lightly
+# than the old flat 3.0, and there is no material-calibration bug for it to
+# interact with, since PST_MG/PST_EG already carry the trained material
+# values. Still the highest-risk P4 candidate given that history, hence last,
+# and rejected outright if the ablation does not show a real improvement.
+MOB_WEIGHT = np.array([0, 0, 4, 4, 2, 1, 0], dtype=np.int64)  # by piece_type 1..6
+
+
 @njit(cache=False, nogil=True)
-def evaluate(mbox, meta, pst_mg, pst_eg, castle_k, castle_q, bias, max_phase):
+def _mobility_term(bb, occ):
+    occ_all = occ[2]
+    total = np.int64(0)
+    for colour in range(2):
+        sign = 1 if colour == 0 else -1
+        own = occ[colour]
+        o = colour * 6
+        b = bb[o + 1]
+        while b:
+            sq = _c._lsb(b)
+            b &= b - _c.ONE
+            total += sign * MOB_WEIGHT[2] * _c.popcount(_c.KN[sq] & ~own)
+        b = bb[o + 2]
+        while b:
+            sq = _c._lsb(b)
+            b &= b - _c.ONE
+            total += sign * MOB_WEIGHT[3] * _c.popcount(_c._bishop_att(sq, occ_all) & ~own)
+        b = bb[o + 3]
+        while b:
+            sq = _c._lsb(b)
+            b &= b - _c.ONE
+            total += sign * MOB_WEIGHT[4] * _c.popcount(_c._rook_att(sq, occ_all) & ~own)
+        b = bb[o + 4]
+        while b:
+            sq = _c._lsb(b)
+            b &= b - _c.ONE
+            att = _c._bishop_att(sq, occ_all) | _c._rook_att(sq, occ_all)
+            total += sign * MOB_WEIGHT[5] * _c.popcount(att & ~own)
+    return total
+
+
+@njit(cache=False, nogil=True)
+def evaluate(mbox, meta, bb, occ, pst_mg, pst_eg, castle_k, castle_q, bias, max_phase):
     """Centipawn score from the side-to-move's point of view."""
     mg = np.int64(0)
     eg = np.int64(0)
@@ -187,6 +234,8 @@ def evaluate(mbox, meta, pst_mg, pst_eg, castle_k, castle_q, bias, max_phase):
     passed = _passed_pawn_term(mbox)
     white += passed * (2 * max_phase - phase) // (2 * max_phase)
 
+    white += _mobility_term(bb, occ)
+
     if meta[0] == 0:
         return white + bias
     return -white + bias
@@ -196,7 +245,7 @@ def evaluate_py(pos) -> int:
     """Convenience wrapper for tests / the Python reference path."""
     return int(
         evaluate(
-            pos.mbox, pos.meta, PST_MG, PST_EG,
+            pos.mbox, pos.meta, pos.bb, pos.occ, PST_MG, PST_EG,
             CASTLE_K, CASTLE_Q, BIAS, MAX_PHASE,
         )
     )

@@ -94,6 +94,15 @@ def _msb(b):
 
 
 @njit(cache=False)
+def popcount(b):
+    c = 0
+    while b:
+        b &= b - ONE
+        c += 1
+    return c
+
+
+@njit(cache=False)
 def _slider(sq, occ, dirs):
     attacks = np.uint64(0)
     for i in range(dirs.shape[0]):

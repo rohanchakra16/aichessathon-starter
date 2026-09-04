@@ -212,7 +212,7 @@ def _quiesce(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob,
     if nodes[0] & 2047 == 0 and stop[0] != 0:
         return 0
 
-    stand = _e.evaluate(mbox, meta, pst_mg, pst_eg, ck, cq, bias, maxph)
+    stand = _e.evaluate(mbox, meta, bb, occ, pst_mg, pst_eg, ck, cq, bias, maxph)
     if ply >= PLY_LIMIT:
         return stand
     if stand >= beta:
@@ -271,7 +271,7 @@ def _negamax(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob,
 
     us = meta[0]
     if ply >= PLY_LIMIT:
-        return _e.evaluate(mbox, meta, pst_mg, pst_eg, ck, cq, bias, maxph)
+        return _e.evaluate(mbox, meta, bb, occ, pst_mg, pst_eg, ck, cq, bias, maxph)
 
     hist_keys[base + ply] = zob[0]
     if ply > 0 and meta[3] >= 4 and _is_repetition(hist_keys, base, ply, zob[0], meta[3]):
@@ -320,7 +320,7 @@ def _negamax(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob,
                 return s
 
     non_pv = beta - alpha == 1
-    eval_static = _e.evaluate(mbox, meta, pst_mg, pst_eg, ck, cq, bias, maxph)
+    eval_static = _e.evaluate(mbox, meta, bb, occ, pst_mg, pst_eg, ck, cq, bias, maxph)
 
     # reverse futility / static null-move pruning
     if (non_pv and not in_chk and depth <= 6 and beta > -MATE_IN_MAX
