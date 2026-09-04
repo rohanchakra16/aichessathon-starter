@@ -29,8 +29,21 @@ NON_IMPROVEMENT_STATUSES = frozenset({"rejected", "inconclusive"})
 
 # Each candidate generator needs exactly one external executable. Preflight and
 # the per-iteration guard use this map so an unused generator is never required.
-GENERATOR_EXECUTABLES = {"claude-code": "claude", "codex-exec": "codex"}
+# ``claude-retrain`` is deterministic (no model call); it only needs ``uv`` to
+# run the frozen offline trainer, and ``uv`` is already a common executable.
+GENERATOR_EXECUTABLES = {
+    "claude-code": "claude",
+    "codex-exec": "codex",
+    "claude-retrain": "uv",
+}
 COMMON_EXECUTABLES = ("gh", "git", "uv")
+
+# Deterministic splice markers for the learned-evaluator-retrain candidate path.
+RESIDUAL_BEGIN = "# === BEGIN learned positional/endgame residual ==="
+RESIDUAL_END = "# === END learned positional/endgame residual ==="
+RESIDUAL_CALL = "    score += _positional_residual(board)  # learned residual"
+RESIDUAL_MODULE_ANCHOR = "\n\n_deadline = math.inf\n"
+RESIDUAL_CALL_ANCHOR = "    return BIAS + score\n"
 
 
 class InfrastructureError(RuntimeError):
@@ -431,6 +444,171 @@ def generate_candidate(
     git("commit", "-m", f"experiment {experiment_id}: AI candidate", cwd=worktree)
     metadata["candidate_commit"] = git("rev-parse", "HEAD", cwd=worktree)
     return metadata
+
+
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def splice_residual_block(source: str, feature_source: str, glue_source: str) -> str:
+    """Insert (or replace in place) the learned-residual block in agent.py.
+
+    Pure text transform, no model call: the feature maths comes verbatim from
+    ``training/train_positional_evaluator.AGENT_FEATURE_SOURCE`` and the same
+    string builds the trainer's design matrix, so the shipped features and the
+    fitted coefficients cannot drift.
+    """
+    if RESIDUAL_BEGIN in source:
+        start = source.index(RESIDUAL_BEGIN)
+        end = source.index("\n", source.index(RESIDUAL_END) + len(RESIDUAL_END)) + 1
+        source = source[:start].rstrip("\n") + "\n\n" + source[end:].lstrip("\n")
+    source = source.replace(RESIDUAL_CALL + "\n", "")
+
+    if source.count(RESIDUAL_MODULE_ANCHOR) != 1:
+        raise CandidateError("agent.py module anchor for the residual block is not unique")
+    if source.count(RESIDUAL_CALL_ANCHOR) != 1:
+        raise CandidateError("agent.py evaluate-return anchor is not unique")
+
+    block = (
+        f"{RESIDUAL_BEGIN}\n"
+        f"{feature_source.strip()}\n\n\n"
+        f"{glue_source.strip()}\n"
+        f"{RESIDUAL_END}\n"
+    )
+    source = source.replace(
+        RESIDUAL_MODULE_ANCHOR, f"\n\n{block}\n_deadline = math.inf\n", 1
+    )
+    source = source.replace(
+        RESIDUAL_CALL_ANCHOR, f"{RESIDUAL_CALL}\n{RESIDUAL_CALL_ANCHOR}", 1
+    )
+    return source
+
+
+def retrain_generate(
+    worktree: Path,
+    experiment_id: str,
+    policy: dict[str, Any],
+    entrypoint: str,
+) -> dict[str, Any]:
+    """Deterministic learned-evaluator-retrain candidate.
+
+    Splices the frozen feature block into agent.py, runs the whitelisted offline
+    trainer to refit only the bounded residual coefficients in
+    weights/model.json, and commits {agent.py, weights/model.json}. Evaluation,
+    ablation, reliability, arena and promotion downstream are unchanged.
+    """
+    retrain = policy.get("retrain")
+    if not isinstance(retrain, dict) or not retrain.get("enabled"):
+        raise CandidateError("policy.retrain is absent or disabled")
+    if entrypoint not in retrain.get("allowed_entrypoints", []):
+        raise CandidateError(f"retrain entrypoint {entrypoint!r} is not whitelisted")
+
+    entrypoint_path = worktree / entrypoint
+    if not entrypoint_path.is_file():
+        raise CandidateError(f"retrain entrypoint {entrypoint!r} is missing in the worktree")
+
+    datasets: dict[str, Path] = {}
+    for name, spec in retrain["datasets"].items():
+        if not spec.get("sha256"):
+            raise InfrastructureError(
+                f"retrain {name} dataset sha256 is not pinned in policy.retrain.datasets; "
+                "generate the datasets and pin their sha256 before running a retrain"
+            )
+        dataset_path = worktree / spec["path"]
+        if not dataset_path.is_file():
+            raise InfrastructureError(f"retrain {name} dataset missing: {spec['path']}")
+        actual = file_sha256(dataset_path)
+        if actual != spec["sha256"]:
+            raise InfrastructureError(
+                f"retrain {name} dataset sha256 mismatch for {spec['path']}: "
+                f"{actual} != pinned {spec['sha256']}"
+            )
+        datasets[name] = dataset_path
+
+    trainer_module = import_trainer(entrypoint_path)
+    agent_path = worktree / "agent.py"
+    agent_path.write_text(
+        splice_residual_block(
+            agent_path.read_text(),
+            trainer_module.AGENT_FEATURE_SOURCE,
+            trainer_module.AGENT_RESIDUAL_GLUE,
+        )
+    )
+
+    trainer = run(
+        [
+            "uv",
+            "run",
+            "python",
+            entrypoint,
+            "--base-model",
+            "weights/model.json",
+            "--output",
+            "weights/model.json",
+            "--training-dataset",
+            str(datasets["training"].relative_to(worktree)),
+            "--validation-dataset",
+            str(datasets["validation"].relative_to(worktree)),
+            "--seed",
+            str(int(retrain["seed"])),
+        ],
+        cwd=worktree,
+        timeout=int(retrain["timeout_seconds"]),
+        check=False,
+    )
+    if trainer.returncode:
+        raise CandidateError(
+            f"offline retrain failed: {trainer.stdout[-3000:]}\n{trainer.stderr[-3000:]}"
+        )
+
+    paths = status_paths(worktree)
+    permitted = {"agent.py", "weights/model.json"}
+    unexpected = [path for path in paths if path not in permitted]
+    if unexpected:
+        raise CandidateError(f"retrain touched unexpected paths: {unexpected}")
+    if not paths:
+        raise CandidateError("retrain produced no change")
+
+    model = json.loads((worktree / "weights/model.json").read_text())
+    if model.get("layout", {}).get("positional_offset") != 770:
+        raise CandidateError("retrained model.json is missing the positional residual layout")
+
+    git("add", "--", *paths, cwd=worktree)
+    git("commit", "-m", f"experiment {experiment_id}: retrained evaluator", cwd=worktree)
+    return {
+        "generator": "claude-retrain",
+        "retrain_entrypoint": entrypoint,
+        "retrain_entrypoint_sha256": file_sha256(entrypoint_path),
+        "retrain_seed": int(retrain["seed"]),
+        "retrain_datasets": {
+            name: {"path": spec["path"], "sha256": spec["sha256"]}
+            for name, spec in retrain["datasets"].items()
+        },
+        "residual_coefficients": model.get("residual_coefficients"),
+        "selected_cross_validation": model.get("selected_cross_validation"),
+        "independent_validation": model.get("independent_validation"),
+        "model_kind": model.get("model_kind"),
+        "candidate_commit": git("rev-parse", "HEAD", cwd=worktree),
+    }
+
+
+def import_trainer(entrypoint_path: Path) -> Any:
+    """Import a whitelisted trainer module by path to read its feature source."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("_retrain_trainer", entrypoint_path)
+    if spec is None or spec.loader is None:
+        raise CandidateError(f"cannot import trainer at {entrypoint_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    for attribute in ("AGENT_FEATURE_SOURCE", "AGENT_RESIDUAL_GLUE"):
+        if not isinstance(getattr(module, attribute, None), str):
+            raise CandidateError(f"trainer is missing string attribute {attribute!r}")
+    return module
 
 
 def github_evaluate(
@@ -869,6 +1047,16 @@ def one_iteration(args: argparse.Namespace) -> bool:
                 "candidate_commit": resumed_sha,
             }
             record["resumed_after_interruption"] = True
+        elif getattr(args, "retrain_entrypoint", None):
+            git("worktree", "add", "-b", branch, str(worktree), champion)
+            _, recent_records = select_candidate_generator(state, policy)
+            record["generator"] = "claude-retrain"
+            record["consecutive_non_improvements"] = consecutive_non_improvements(
+                recent_records
+            )
+            proposal = retrain_generate(
+                worktree, experiment_id, policy, args.retrain_entrypoint
+            )
         else:
             git("worktree", "add", "-b", branch, str(worktree), champion)
             generator, recent_records = select_candidate_generator(state, policy)
@@ -957,9 +1145,19 @@ def main() -> int:
     parser.add_argument("--keep-worktrees", action="store_true")
     parser.add_argument("--release-check", action="store_true")
     parser.add_argument("--clock-promotion")
+    parser.add_argument(
+        "--retrain-entrypoint",
+        help="run learned-evaluator-retrain candidates with this whitelisted trainer",
+    )
     args = parser.parse_args()
     if args.iterations < 1:
         parser.error("--iterations must be positive")
+    if args.retrain_entrypoint:
+        retrain = load(POLICY_PATH).get("retrain")
+        if not isinstance(retrain, dict) or not retrain.get("enabled"):
+            parser.error("policy.retrain is absent or disabled")
+        if args.retrain_entrypoint not in retrain.get("allowed_entrypoints", []):
+            parser.error(f"retrain entrypoint {args.retrain_entrypoint!r} is not whitelisted")
     lock_path = ROOT / ".autoloop/controller.lock"
     lock_path.parent.mkdir(exist_ok=True)
     with lock_path.open("w") as lock:

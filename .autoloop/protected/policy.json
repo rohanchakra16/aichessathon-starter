@@ -127,5 +127,32 @@
     "increment_ms": 500,
     "ply_cap": 300
   },
+  "retrain": {
+    "enabled": true,
+    "allowed_entrypoints": ["training/train_positional_evaluator.py"],
+    "timeout_seconds": 2400,
+    "seed": 20260904,
+    "datasets": {
+      "training": {
+        "path": "training/data/positional_teacher_train.json",
+        "sha256": null
+      },
+      "validation": {
+        "path": "training/data/positional_teacher_validation.json",
+        "sha256": null
+      }
+    },
+    "leakage_controls": {
+      "require_protected_opening_list_unused": true,
+      "require_game_grouped": true,
+      "require_disjoint_train_validation_games": true,
+      "validation_is_report_only": true
+    },
+    "residual": {
+      "max_features": 16,
+      "coefficient_abs_cap": 60.0,
+      "base_weights_frozen": true
+    }
+  },
   "competition_upload_enabled": false
 }

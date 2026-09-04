@@ -48,6 +48,41 @@ def test_protected_paths_are_not_candidate_editable() -> None:
     assert all(not controller.path_allowed(path, current) for path in protected)
 
 
+def test_retrain_family_is_declared_bounded_and_frozen() -> None:
+    retrain = policy()["retrain"]
+    assert retrain["enabled"] is True
+    assert retrain["timeout_seconds"] > 0
+    assert isinstance(retrain["seed"], int)
+    residual = retrain["residual"]
+    assert residual["base_weights_frozen"] is True
+    assert residual["coefficient_abs_cap"] > 0
+    assert residual["max_features"] >= 1
+    leakage = retrain["leakage_controls"]
+    assert leakage["require_protected_opening_list_unused"] is True
+    assert leakage["require_game_grouped"] is True
+    assert leakage["require_disjoint_train_validation_games"] is True
+    assert leakage["validation_is_report_only"] is True
+
+
+def test_retrain_entrypoints_are_whitelisted_files_but_not_candidate_editable() -> None:
+    current = policy()
+    entrypoints = current["retrain"]["allowed_entrypoints"]
+    assert entrypoints
+    for entrypoint in entrypoints:
+        assert entrypoint.startswith("training/")
+        assert (controller.ROOT / entrypoint).is_file()
+        assert not controller.path_allowed(entrypoint, current)
+
+
+def test_retrain_datasets_live_under_training_data_with_a_sha_slot() -> None:
+    for spec in policy()["retrain"]["datasets"].values():
+        assert spec["path"].startswith("training/data/")
+        assert "sha256" in spec
+        assert spec["sha256"] is None or (
+            isinstance(spec["sha256"], str) and len(spec["sha256"]) == 64
+        )
+
+
 def test_decision_requires_compliance_before_strength() -> None:
     status, _ = controller.decide({"passed": False}, {"passed": True, "score": 1.0}, policy())
     assert status == "rejected"
