@@ -1263,27 +1263,37 @@
       ]
     }
   },
+  "clock_sensitive_promotion": {
+    "candidate_commit": "090f18cfc9dda8ce10a13edd48fb32b93e74f3a7",
+    "champion_commit": "4a0c988009ecae163ac09368f92e4a792dac7568",
+    "completed_at": "2026-09-04T12:55:26.263740+00:00",
+    "decision_reason": "prospective real-clock arena remained inconclusive (score 0.531, interval [0.389, 0.668])",
+    "evidence": "confirmations/exp-0099-prospective-real-clock.json",
+    "protected_hash": "6b2de3b47d6c2460900810fc496bae8e7cb807c7c2424d0ebe772686df7de106",
+    "settings_key": "prospective_real_clock_arena",
+    "status": "inconclusive"
+  },
   "completed_at": "2026-09-04T11:49:56.814728+00:00",
-  "decision_reason": "sequential paired arena remained inconclusive (score 0.555, interval [0.482, 0.625])",
+  "decision_reason": "prospective real-clock arena remained inconclusive (score 0.531, interval [0.389, 0.668])",
   "generator": "resumed-candidate",
   "id": "exp-0099",
+  "protected_hash": "d678c89326ce7151b09c38818bf94b94e92c7014b7e99100eb24800b04966353",
   "provenance_note": {
     "actual_source": "human-authorized exact-diff candidate (Variant C material-calibration correction)",
-    "mechanism": "committed to a pre-created local branch autoloop/candidate-0099 and evaluated through the controller's resumed-candidate code path",
-    "not_an_interruption": true,
-    "nominal_fields": "the 'generator': 'resumed-candidate' and 'resumed_after_interruption': true fields reflect the code path, NOT an interrupted AI-generation run; no generator was invoked",
+    "annotation_added": "2026-09-04, post-hoc; arena / ci / decision fields unchanged",
+    "authorized_by": "user, chat, 2026-09-04",
     "candidate_commit": "090f18cfc9dda8ce10a13edd48fb32b93e74f3a7",
     "change": "agent.py only - remove the exp-0089 MOBILITY_WEIGHT leaf term; add an explicit untapered centipawn material term (100/320/330/500/900) at MATERIAL_SCALE=1.0",
-    "authorized_by": "user, chat, 2026-09-04",
+    "mechanism": "committed to a pre-created local branch autoloop/candidate-0099 and evaluated through the controller's resumed-candidate code path",
+    "nominal_fields": "the 'generator': 'resumed-candidate' and 'resumed_after_interruption': true fields reflect the code path, NOT an interrupted AI-generation run; no generator was invoked",
+    "not_an_interruption": true,
     "pre_launch_verification_on_090f18c": {
-      "model_strength_ablation": "7-9-0, score 0.7188 (>= 0.625), 0 failed terminations",
-      "model_move_ablation": "26/32 differences (>= 8)",
       "agent_stress": "pass, worst move 0.510 s",
-      "local": "ruff / mypy / pytest tests/autoloop clean; diagnostics 1/5 -> 4/5"
-    },
-    "annotation_added": "2026-09-04, post-hoc; arena / ci / decision fields unchanged"
+      "local": "ruff / mypy / pytest tests/autoloop clean; diagnostics 1/5 -> 4/5",
+      "model_move_ablation": "26/32 differences (>= 8)",
+      "model_strength_ablation": "7-9-0, score 0.7188 (>= 0.625), 0 failed terminations"
+    }
   },
-  "protected_hash": "d678c89326ce7151b09c38818bf94b94e92c7014b7e99100eb24800b04966353",
   "resumed_after_interruption": true,
   "schema_version": 1,
   "started_at": "2026-09-04T11:46:03.004675+00:00",
