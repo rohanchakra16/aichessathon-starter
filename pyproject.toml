@@ -26,3 +26,12 @@ ignore = ["N818"]
 [tool.mypy]
 strict = true
 files = ["agent.py", "harness"]
+
+# The engine kernels under weights/ are numba-jitted numeric code operating on
+# flat numpy arrays; per-parameter static typing there is noise, not safety.
+# agent.py itself stays strict-clean.
+[[tool.mypy.overrides]]
+module = "weights.*"
+ignore_errors = true
+follow_untyped_imports = true
+disallow_untyped_calls = false
