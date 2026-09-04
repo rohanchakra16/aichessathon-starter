@@ -69,7 +69,26 @@ near-zero cross-depth reuse. `MAX_DEPTH=8` hard cap. Time budget fixed 2.0s rega
 - [x] reconciliation, rules, profiling, plan
 - [x] protected Dockerfile numba parity (`8e33e03`, main)
 - [x] P0 scaffolding + P1 numba bitboard core, perft-validated (`4205f10`)
-- [ ] P2 search core — NEXT. njit negamax/PVS + iterative deepening + hash TT (no depth in key,
-      bucketed, no full clear) + move ordering (TT / MVV-LVA+SEE / killers / history). Eval stub =
-      material + tapered PST seeded from weights/model.json until P4. Gate: WAC/ECM solve-rate and
-      nps vs champion on identical FENs (target >=10x the ~30k midgame nps in the jitted hot path).
+- [x] P2 search core (`67d23b8`): njit iterative-deepening PVS, hash TT (depth-in-entry, generation-
+      aged, no full clear), TT/MVV-LVA/killer/history ordering, quiescence. Eval = faithful port of
+      the shipped model (tapered PST + castling + bias; mobility term dropped, per the A/B/C study).
+      GATE MET: 12-game H2H vs the champion at 8s+80ms, +12 =0 -0, all by checkmate.
+- [x] P3 pruning (`50db414`): mate-distance, reverse-futility/static-null, null-move (zugzwang-guarded
+      via phase + non-PV + not-in-check), frontier futility, LMR with verification re-search.
+      Effect: same middlegame FEN reaches depth 13 in ~6.5s vs depth 8 before (branching factor
+      ~5-6 -> ~2.5). Re-ran the H2H gate to confirm no regression: +11 =1 -0, score 0.958.
+- [x] time-management hardening (`d164769`): a dev Stockfish-sparring run (see below) flag-lost a
+      game; root cause was a flat "+400ms" floor plus reliance on the increment to cover ~5ms of
+      fixed per-call overhead outside the timed search. Fixed with a bank-proportional hard reserve
+      and an explicit overhead subtraction. Verified flag-free over two synthetic full-length stress
+      games (8000+80ms and 3000+30ms) driving agent.get_move() directly against a shrinking clock.
+- [x] first Stockfish calibration (dev-only, NOT a competition-clock claim — 15s+150ms local
+      Stockfish 18, UCI_LimitStrength): elo=1400 +3=0-1 (the pre-fix flag loss), elo=1600 +6=0-0 all
+      checkmates, elo=1800 +2=1-3 roughly even. Crossover currently sits around SF-1700-1800-ish at
+      this fast clock -- encouraging (matches/exceeds the ~1800 minimum target) but NOT yet a
+      competition-clock or statistically adequate-sample claim. No crashes, no flags, no illegal
+      moves across ~30 dev games total after the time-management fix.
+- [ ] NEXT: P4 (eval -- king safety, passed pawns, cheap bitboard mobility done right, progress/
+      contempt for conversion), a real 120+0.5 exact-clock ladder at larger sample size before any
+      strength number is trusted, and the deferred mypy-strict pass on weights/ if this becomes a
+      submission candidate. SEE-based capture ordering (still MVV-LVA only) is a plausible P3.5.
