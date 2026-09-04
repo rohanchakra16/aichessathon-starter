@@ -88,7 +88,46 @@ near-zero cross-depth reuse. `MAX_DEPTH=8` hard cap. Time budget fixed 2.0s rega
       this fast clock -- encouraging (matches/exceeds the ~1800 minimum target) but NOT yet a
       competition-clock or statistically adequate-sample claim. No crashes, no flags, no illegal
       moves across ~30 dev games total after the time-management fix.
-- [ ] NEXT: P4 (eval -- king safety, passed pawns, cheap bitboard mobility done right, progress/
-      contempt for conversion), a real 120+0.5 exact-clock ladder at larger sample size before any
-      strength number is trusted, and the deferred mypy-strict pass on weights/ if this becomes a
-      submission candidate. SEE-based capture ordering (still MVV-LVA only) is a plausible P3.5.
+- [x] MAJOR COURSE CORRECTION per user instruction (2026-09-04): frozen the P1-P3 + time-fix state as
+      an immutable reference, tag `phineas2-baseline-p1p3` = commit `466d6d2` (pushed to origin).
+      Every subsequent change is now a separately-committed, separately-ablated candidate compared
+      against this tag, not a bundled rewrite. "~1700-1800-ish" language retired -- not a valid claim
+      from 6-game fast-clock samples; only real 120+0.5 games at adequate sample size count.
+- [x] reliability verification (`3b06f01`): no Docker in this sandbox, so "fresh container" is
+      approximated by fresh OS subprocesses (the variable that matters -- a from-scratch process
+      paying the numba JIT cost once -- is exercised directly, not skipped). 5x fresh-process cold
+      start: import ~12.2-12.6s (<<60s budget), first move exactly the requested budget (not JIT
+      lag), no crashes. Submission zip: 8 files, 24KB/88KB (unzipped), <<50MB. Import scan of shipped
+      files: numpy + guarded numba + stdlib only, no python-chess, no network, no subprocess; the
+      only "stockfish" string anywhere is inert JSON provenance in model.json. Pure-Python fallback
+      (P2_NO_NUMBA=1) verified to still produce a legal move end-to-end. ruff/mypy clean repo-wide.
+      pytest tests/autoloop: 82/83 -- the one failure is expected and not a regression (it checks the
+      champion-specific offline-retraining residual-splice anchor, which a from-scratch agent.py was
+      never routed through; not modified, still correctly validates the champion on main).
+- [x] exact-clock validation harness (`3b06f01`): scripts/p2_worker.py (one-game subprocess, mirrors
+      "one process per game", exposes non-contract LAST_INFO telemetry) + scripts/
+      p2_exact_clock_validation.py (drives it vs a strength-limited local Stockfish 18 at a real
+      clock, saves PGN + JSON per run: W/D/L, score, 95% CI, by-colour, move-time/depth stats,
+      failures, winning-position draws, over a fixed preregistered opening list).
+      METHODOLOGICAL FIX: Worker/play_game take a `target_dir` (default: live worktree); a validation
+      run must point --target-dir at a separate, detached `git worktree add` checkout of the tag/
+      commit under test (e.g. /tmp/claude-501/p2-baseline for the frozen baseline) -- never the live
+      worktree while P4 development is ongoing there, since every game spawns a fresh subprocess that
+      re-imports agent.py from disk and would silently pick up in-progress edits.
+- [~] Step 3 (user-mandated): ~14-game 120+0.5 baseline vs Stockfish elo 1800, run against the
+      isolated frozen-baseline checkout -- IN PROGRESS, see the dated addendum below for the result
+      once it lands (background job, do not duplicate).
+- [x] P4 candidate 1a (`bf04f4b`): weights/p2core.see -- bitboard SEE, standard swap algorithm,
+      handles en passant / promotion / discovered attackers. 7 hand-verified unit tests
+      (scripts/p2_see_test.py), all pass.
+- [x] P4 candidate 1b (`bf4ba9e`): wired SEE into move ordering (captures scored by real SEE value,
+      losing captures sink below quiets instead of ahead of them) and quiescence (stop trying captures
+      once SEE turns negative; delta pruning now uses the real SEE gain). NOT YET ablation-tested --
+      queued to run against phineas2-baseline-p1p3 once Step 3 frees the CPU (only one engine job at a
+      time; concurrent games corrupt each other's wall-clock time-management measurements).
+- [ ] NEXT: SEE ablation (H2H vs baseline, then exact-clock if it earns it); P4 candidates 2-5 in the
+      user's stated order -- (2) evaluation-aware repetition/conversion logic, (3) king safety +
+      development, (4) passed pawns / king activity / endgame conversion, (5) true mobility done
+      properly, last, since the old mobility term was net harmful. Each is its own commit, its own
+      ablation, reject-if-it-doesn't-help. Then the larger 24-40 game exact-clock confirmation:
+      Stockfish 1800 first, screen 2000 only if competitive, 2200 only if competitive at 2000.
