@@ -354,30 +354,35 @@ time constant of any of the above is NOT a materially new hypothesis.
    scientific non-improvements since the newest promotion AND no materially
    different, well-motivated experiment left in that direction).
 3. Decide CONTINUE or STOP.
-   - CONTINUE if a materially different, well-motivated experiment remains,
-     whether in that direction or another (richer leaf evaluation such as
-     mobility / pawn structure / passed pawns / bishop pair / rook-on-open-file
-     / non-linear king safety; a small opening book designed to not defeat the
-     model-move-ablation gate; persisted cross-move search state; something you
-     identify from the evidence). Prefer genuinely new directions over more
-     tuning.
+   - CONTINUE if a materially different, well-motivated experiment remains.
+     Two candidate paths now exist:
+     (a) a self-contained agent.py / weights change produced by one `claude -p`
+         run (no Bash); or
+     (b) family `learned-evaluator-retrain`: a deterministic offline retrain of
+         weights/model.json that refits ONLY a bounded positional/endgame
+         residual on the frozen 770-weight PSQT, run by
+         `controller.py --retrain-entrypoint training/train_positional_evaluator.py`.
+         It trains king activity / centralisation, enemy-king tropism in decided
+         endgames, passed pawns, pawn structure and a tempo/progress signal from
+         the Stockfish-18 teacher dataset with game-grouped cross-validation.
+         Prefer this when the diagnosed failure is endgame/technical conversion
+         and the self-contained hand-weighted leaf-eval family is exhausted
+         (it is, as of exp-0096).
    - STOP only for: a genuine infrastructure/auth/rules blocker
      (stop_condition "infrastructure_blocker"); or true scientific saturation
-     (stop_condition "scientific_saturation") after a full evidence audit with
-     no materially new well-motivated experiment anywhere.
-4. If CONTINUE, specify the single next hypothesis. Constraints on it:
-   - The candidate generator is one `claude -p` run restricted to editing
-     agent.py and/or weights/. It has no Bash and cannot run training/ pipelines
-     or produce a newly trained weights/model.json. So the hypothesis must be
-     self-contained: a code change in agent.py, optionally with small
-     hand-chosen or closed-form coefficients, or a change to how existing
-     weights are used. If a direction truly needs an offline-trained artifact,
-     say so explicitly and scope a self-contained first step the candidate can
-     ship now (e.g. a single cheaply-computed feature with a conservative fixed
-     coefficient) and flag the training follow-up for the human.
-   - It must keep the trained model materially determining leaf evaluation and
-     move selection, hold one CPU / 2 GB / no network, keep get_move returning a
-     legal UCI move under the real clock, and not repeat a saturated family.
+     (stop_condition "scientific_saturation"). Do NOT declare
+     "scientific_saturation" until the `learned-evaluator-retrain` family has
+     also been tried and exhausted with materially different feature families
+     and/or teacher targets - not just a re-tune of one residual.
+4. If CONTINUE, specify the single next hypothesis and set `next_direction.family`.
+   - For a self-contained change: it must edit only agent.py and/or weights,
+     keep the trained model materially determining leaf evaluation and move
+     selection, hold one CPU / 2 GB / no network, keep get_move legal under the
+     real clock, and not repeat a saturated family.
+   - For `learned-evaluator-retrain`: name the feature family / teacher target
+     and why it is materially different from any prior retrain; the controller
+     handles the mechanics. It is blocked (report `infrastructure_blocker`) if
+     policy.retrain.datasets are not yet pinned.
    - Give concrete guardrails (NPS budget, model-ablation-gate safety,
      reliability/flag risk).
 
@@ -646,11 +651,15 @@ class BatchOutcome:
     stdout: str
 
 
-def run_controller_batch(iterations: int, args: argparse.Namespace) -> BatchOutcome:
+def run_controller_batch(
+    iterations: int, args: argparse.Namespace, retrain_entrypoint: str | None = None
+) -> BatchOutcome:
     state_before = load_json(STATE_PATH)
     first = int(state_before["next_experiment"])
     champion_before = state_before["champion_commit"]
     command = [args.python, "controller.py", "--iterations", str(iterations)]
+    if retrain_entrypoint:
+        command += ["--retrain-entrypoint", retrain_entrypoint]
     try:
         completed = run(command, timeout=args.batch_timeout_seconds, check=False)
     except subprocess.TimeoutExpired:
@@ -710,6 +719,24 @@ def preflight(args: argparse.Namespace) -> None:
         raise SupervisorBlocked(f"python interpreter not found: {args.python}")
     # controller.preflight covers the rest (executables, remote, upload boundary).
     controller.preflight()
+
+
+def retrain_blocker() -> str | None:
+    """Reason the learned-evaluator-retrain family cannot run yet, or None."""
+    retrain = load_json(POLICY_PATH).get("retrain")
+    if not isinstance(retrain, dict) or not retrain.get("enabled"):
+        return "policy.retrain is absent or disabled"
+    if not retrain.get("allowed_entrypoints"):
+        return "policy.retrain.allowed_entrypoints is empty"
+    for name, spec in retrain.get("datasets", {}).items():
+        path = ROOT / spec["path"]
+        if not spec.get("sha256"):
+            return f"{name} dataset sha256 is not pinned in policy.retrain.datasets"
+        if not path.is_file():
+            return f"{name} dataset file is missing: {spec['path']}"
+        if controller.file_sha256(path) != spec["sha256"]:
+            return f"{name} dataset sha256 does not match the pinned value"
+    return None
 
 
 @dataclass
@@ -779,11 +806,24 @@ def cycle(args: argparse.Namespace, last_batch: BatchOutcome | None) -> CycleRes
         push=not args.no_push,
     )
 
+    family = str((audit.next_direction or {}).get("family", ""))
+    retrain_entrypoint: str | None = None
+    if family == "learned-evaluator-retrain":
+        blocker = retrain_blocker()
+        if blocker:
+            return CycleResult("stop", f"retrain family selected but blocked: {blocker}")
+        retrain_entrypoint = load_json(POLICY_PATH)["retrain"]["allowed_entrypoints"][0]
+    append_log({"event": "route", "family": family, "retrain_entrypoint": retrain_entrypoint})
+
     if args.dry_run:
         return CycleResult("dry-run", "audit complete; controller batch skipped")
 
-    print(f"[{now()}] running controller batch (--iterations {args.iterations})", flush=True)
-    outcome = run_controller_batch(args.iterations, args)
+    print(
+        f"[{now()}] running controller batch (--iterations {args.iterations}"
+        f"{'; retrain ' + retrain_entrypoint if retrain_entrypoint else ''})",
+        flush=True,
+    )
+    outcome = run_controller_batch(args.iterations, args, retrain_entrypoint)
     print(
         f"[{now()}] batch ran {outcome.ran_experiments or '[]'}; "
         f"promotion={outcome.promotion}; "
