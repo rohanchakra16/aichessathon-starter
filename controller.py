@@ -151,9 +151,17 @@ def recent_experiment_records(
 
 
 def consecutive_non_improvements(records: list[dict[str, Any]]) -> int:
-    """Count consecutive scientific non-improvements, ignoring no evidence."""
+    """Count consecutive scientific non-improvements, ignoring no evidence.
+
+    A record marked ``infrastructure_invalid`` (a completed candidate whose only
+    failure was a bug in the protected framework, not its own quality) is skipped
+    like an ``infrastructure_error``: it is neither an improvement nor a
+    scientific non-improvement.
+    """
     count = 0
     for record in records:
+        if record.get("infrastructure_invalid") is True:
+            continue
         status = record.get("status")
         if status in NON_IMPROVEMENT_STATUSES:
             count += 1
@@ -454,19 +462,29 @@ def file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def strip_residual_block(source: str) -> str:
+    """Return agent.py source with any spliced learned-residual block + call removed.
+
+    A no-op on the untouched champion; the inverse of the insert half of
+    ``splice_residual_block`` on a candidate worktree that already carries it.
+    """
+    if RESIDUAL_BEGIN in source:
+        start = source.index(RESIDUAL_BEGIN)
+        end = source.index("\n", source.index(RESIDUAL_END) + len(RESIDUAL_END)) + 1
+        source = source[:start].rstrip("\n") + "\n\n" + source[end:].lstrip("\n")
+    return source.replace(RESIDUAL_CALL + "\n", "")
+
+
 def splice_residual_block(source: str, feature_source: str, glue_source: str) -> str:
     """Insert (or replace in place) the learned-residual block in agent.py.
 
     Pure text transform, no model call: the feature maths comes verbatim from
     ``training/train_positional_evaluator.AGENT_FEATURE_SOURCE`` and the same
     string builds the trainer's design matrix, so the shipped features and the
-    fitted coefficients cannot drift.
+    fitted coefficients cannot drift. Idempotent: re-splicing an already-spliced
+    source reproduces it byte for byte.
     """
-    if RESIDUAL_BEGIN in source:
-        start = source.index(RESIDUAL_BEGIN)
-        end = source.index("\n", source.index(RESIDUAL_END) + len(RESIDUAL_END)) + 1
-        source = source[:start].rstrip("\n") + "\n\n" + source[end:].lstrip("\n")
-    source = source.replace(RESIDUAL_CALL + "\n", "")
+    source = strip_residual_block(source)
 
     if source.count(RESIDUAL_MODULE_ANCHOR) != 1:
         raise CandidateError("agent.py module anchor for the residual block is not unique")

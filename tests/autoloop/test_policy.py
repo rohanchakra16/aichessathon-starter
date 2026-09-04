@@ -208,6 +208,16 @@ def test_stall_counter_uses_only_scientific_non_improvements() -> None:
     assert controller.consecutive_non_improvements([{"status": "failed"}, *records]) == 0
 
 
+def test_stall_counter_skips_infrastructure_invalid_candidates() -> None:
+    records = [
+        {"status": "rejected", "infrastructure_invalid": True},
+        {"status": "inconclusive"},
+        {"status": "inconclusive"},
+        {"status": "accepted"},
+    ]
+    assert controller.consecutive_non_improvements(records) == 2
+
+
 def test_claude_command_has_no_shell_web_or_permission_bypass() -> None:
     command = controller.claude_command("safe prompt", policy())
     assert command[:2] == ["claude", "-p"]

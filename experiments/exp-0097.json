@@ -328,6 +328,8 @@
     "dataset_sha256": "8eb497a6ab16c09c01af22d26f9f70c0bbe21ee7af4a2d2bc86a747a83d23236",
     "validation_groups": 243
   },
+  "infrastructure_invalid": true,
+  "invalidation_reason": "The only failed gate was policy_tests: tests/autoloop/test_positional_training.py::test_splice_into_agent_is_idempotent_and_wires_the_residual asserted the checkout's agent.py is the untouched champion ('_positional_residual' not in source), which is false inside a claude-retrain candidate worktree where the residual block is deterministically spliced before CI. All candidate-quality gates passed: model-move ablation 28/32, reliability stress (init 0.15 s, worst move 1.20 s vs 2.25 s), ruff, mypy, smoke, resources, packaging. The arena never ran. This is a protected-framework bug, not a scientific result.",
   "model_kind": "frozen_psqt_with_positional_endgame_residual",
   "protected_hash": "3d55b04526b0ab8270e5f52e926a6ed9822647705893425d106d624ded6522c6",
   "residual_coefficients": {
@@ -369,6 +371,7 @@
   },
   "started_at": "2026-09-04T08:13:18.242369+00:00",
   "status": "rejected",
+  "superseded_by": "exp-0098",
   "workflow": {
     "run_id": 33852396797,
     "run_url": "https://github.com/rohanchakra16/aichessathon-starter/actions/runs/33852396797",

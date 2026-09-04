@@ -79,11 +79,26 @@ def test_agent_feature_source_matches_the_module_runtime() -> None:
 
 
 def test_splice_into_agent_is_idempotent_and_wires_the_residual() -> None:
-    source = (controller.ROOT / "agent.py").read_text()
-    once = controller.splice_residual_block(source, AGENT_FEATURE_SOURCE, AGENT_RESIDUAL_GLUE)
-    twice = controller.splice_residual_block(once, AGENT_FEATURE_SOURCE, AGENT_RESIDUAL_GLUE)
-    assert once == twice
-    assert controller.RESIDUAL_BEGIN in once
-    assert "_positional_residual(board)" in once
-    assert once.count("return BIAS + score") == 1
-    assert "_positional_residual" not in source
+    # Runs against whatever agent.py the checkout has: the untouched champion
+    # under `make gate`, or the already-spliced source inside a retrain
+    # candidate worktree during CI. Both must behave identically.
+    live = (controller.ROOT / "agent.py").read_text()
+    pristine = controller.strip_residual_block(live)
+    spliced = controller.splice_residual_block(
+        live, AGENT_FEATURE_SOURCE, AGENT_RESIDUAL_GLUE
+    )
+    for source in (pristine, live, spliced):
+        once = controller.splice_residual_block(
+            source, AGENT_FEATURE_SOURCE, AGENT_RESIDUAL_GLUE
+        )
+        twice = controller.splice_residual_block(
+            once, AGENT_FEATURE_SOURCE, AGENT_RESIDUAL_GLUE
+        )
+        assert once == twice
+        assert once.count(controller.RESIDUAL_BEGIN) == 1
+        assert once.count(controller.RESIDUAL_END) == 1
+        assert once.count("def _positional_residual(") == 1
+        assert once.count("score += _positional_residual(board)") == 1
+        assert once.count("return BIAS + score") == 1
+    assert "_positional_residual" not in pristine
+    assert controller.strip_residual_block(spliced) == pristine
