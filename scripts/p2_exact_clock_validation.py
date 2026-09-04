@@ -114,6 +114,8 @@ def play_game(sf: chess.engine.SimpleEngine, p2_white: bool, opening: str,
     game.headers["Black"] = "Stockfish18(limited)" if p2_white else "Phineas2"
     game.headers["TimeControl"] = f"{base_ms // 1000}+{inc_ms / 1000.0:g}"
     node = game
+    for opening_move in board.move_stack:  # seed the PGN tree with the opening
+        node = node.add_variation(opening_move)
     result, termination = "draw", "unknown"
 
     try:
