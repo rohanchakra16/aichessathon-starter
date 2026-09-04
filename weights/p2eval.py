@@ -19,6 +19,12 @@ square (development), and a per-king-adjacent-file bonus for having an own
 pawn nearby (a cheap pawn-shield proxy for king safety). Both fade out with
 the phase the same way the midgame/endgame PST blend does, since neither
 matters much once most pieces are off the board.
+
+P4 candidate 4 adds a passed-pawn term -- the one signal here a flat PST
+genuinely cannot express, since whether a pawn is passed depends on where
+the *other* pawns are. Unlike development/king-safety it gets *more* weight
+toward the endgame, not less: converting a passed pawn is exactly the kind
+of "seek progress" signal the user asked for.
 """
 
 from __future__ import annotations
@@ -71,7 +77,50 @@ DEV_SIGN = np.array([1, 1, 1, 1, -1, -1, -1, -1], dtype=np.int64)
 DEV_PENALTY = np.int64(12)   # cp lost per minor piece still on its home square
 SHIELD_BONUS = np.int64(10)  # cp gained per king-adjacent file with an own pawn nearby
 
+# --- passed pawns (P4 candidate 4) ----------------------------------------- #
+# A flat per-square PST cannot express "this pawn has no enemy pawn ahead of
+# it on its own or an adjacent file" -- that depends on where the *other*
+# pawns are, not just this one's square -- so it is a genuinely new signal,
+# not a duplicate of anything already in the trained table. Value scales up
+# steeply with rank (a passed pawn on the 7th is close to a new queen) and,
+# unlike development/king-safety, gets *more* weight as material comes off
+# rather than less: converting a passed pawn is an endgame concern.
+PASSED_BONUS = np.array([0, 0, 6, 12, 22, 40, 70, 0], dtype=np.int64)  # by rank, white orientation
+
 njit = _c.njit
+
+
+@njit(cache=False, nogil=True)
+def _passed_pawn_term(mbox):
+    total = np.int64(0)
+    for sq in range(64):
+        p = mbox[sq]
+        if p != 0 and p != 6:
+            continue
+        f = sq % 8
+        r = sq // 8
+        blocked = False
+        if p == 0:
+            for df in (-1, 0, 1):
+                ff = f + df
+                if ff < 0 or ff > 7:
+                    continue
+                for rr in range(r + 1, 8):
+                    if mbox[rr * 8 + ff] == 6:
+                        blocked = True
+            if not blocked:
+                total += PASSED_BONUS[r]
+        else:
+            for df in (-1, 0, 1):
+                ff = f + df
+                if ff < 0 or ff > 7:
+                    continue
+                for rr in range(0, r):
+                    if mbox[rr * 8 + ff] == 0:
+                        blocked = True
+            if not blocked:
+                total -= PASSED_BONUS[7 - r]
+    return total
 
 
 @njit(cache=False, nogil=True)
@@ -133,6 +182,10 @@ def evaluate(mbox, meta, pst_mg, pst_eg, castle_k, castle_q, bias, max_phase):
             dev -= DEV_SIGN[i] * DEV_PENALTY
     shield = (_pawn_shield(mbox, wk_sq, 0) - _pawn_shield(mbox, bk_sq, 1)) * SHIELD_BONUS
     white += (dev + shield) * phase // max_phase
+
+    # passed pawns: half value in the opening, full value by the endgame
+    passed = _passed_pawn_term(mbox)
+    white += passed * (2 * max_phase - phase) // (2 * max_phase)
 
     if meta[0] == 0:
         return white + bias

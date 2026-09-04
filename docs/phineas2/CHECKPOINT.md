@@ -114,20 +114,44 @@ near-zero cross-depth reuse. `MAX_DEPTH=8` hard cap. Time budget fixed 2.0s rega
       commit under test (e.g. /tmp/claude-501/p2-baseline for the frozen baseline) -- never the live
       worktree while P4 development is ongoing there, since every game spawns a fresh subprocess that
       re-imports agent.py from disk and would silently pick up in-progress edits.
-- [~] Step 3 (user-mandated): ~14-game 120+0.5 baseline vs Stockfish elo 1800, run against the
-      isolated frozen-baseline checkout -- IN PROGRESS, see the dated addendum below for the result
-      once it lands (background job, do not duplicate).
+- [x] Step 3 (user-mandated): 14-game 120+0.5 baseline vs Stockfish elo 1800, isolated frozen-baseline
+      checkout (`/tmp/claude-501/p2-baseline` = phineas2-baseline-p1p3). First attempt crashed on a PGN-
+      export bug for non-startpos openings (fixed in `1c34034`, verified offline with no engine cost
+      before rerunning). Result: **+5 =3 -6, score=0.464, 95% CI [0.233, 0.696], 0 failures.** Roughly
+      even at the real clock -- materially humbler than the fast-clock screening suggested, exactly the
+      outcome the user warned was possible ("we cannot assume the real clock benefits Phineas more than
+      strength-limited Stockfish"). By colour: white 3-2-2 (0.571), black 2-1-4 (0.357) -- weaker as
+      black in this sample. This is the reference point Step 6's larger batch will be compared to.
 - [x] P4 candidate 1a (`bf04f4b`): weights/p2core.see -- bitboard SEE, standard swap algorithm,
       handles en passant / promotion / discovered attackers. 7 hand-verified unit tests
       (scripts/p2_see_test.py), all pass.
-- [x] P4 candidate 1b (`bf4ba9e`): wired SEE into move ordering (captures scored by real SEE value,
-      losing captures sink below quiets instead of ahead of them) and quiescence (stop trying captures
-      once SEE turns negative; delta pruning now uses the real SEE gain). NOT YET ablation-tested --
-      queued to run against phineas2-baseline-p1p3 once Step 3 frees the CPU (only one engine job at a
-      time; concurrent games corrupt each other's wall-clock time-management measurements).
-- [ ] NEXT: SEE ablation (H2H vs baseline, then exact-clock if it earns it); P4 candidates 2-5 in the
-      user's stated order -- (2) evaluation-aware repetition/conversion logic, (3) king safety +
-      development, (4) passed pawns / king activity / endgame conversion, (5) true mobility done
-      properly, last, since the old mobility term was net harmful. Each is its own commit, its own
-      ablation, reject-if-it-doesn't-help. Then the larger 24-40 game exact-clock confirmation:
-      Stockfish 1800 first, screen 2000 only if competitive, 2200 only if competitive at 2000.
+- [x] P4 candidate 1b (`bf4ba9e`): wired SEE into move ordering and quiescence (see the commit for the
+      mechanism). ACCEPTED as **phineas2-champion-v2-see** after ablation vs phineas2-baseline-p1p3:
+      +12 =3 -5, score=0.675, 95% CI [0.488, 0.862], 0 failures.
+      METHODOLOGICAL FIX during this candidate: the exact-clock/ablation harness always imported
+      agent.py from the *live* worktree, so an in-flight validation run picks up concurrent P4 edits on
+      every fresh per-game subprocess. Fixed by adding a `target_dir`/`--candidate-dir`/`--baseline-dir`
+      parameter and always pointing runs at a separate, detached `git worktree add --detach <tag>`
+      checkout -- never the branch tip while it's being edited. This discipline was then violated once
+      more by accident while drafting candidate 3 during candidate 2's ablation (caught after 1 game,
+      no bad data used) and is now followed strictly: never edit the live tree while any ablation or
+      validation job targeting it is in flight.
+- [x] P4 candidate 2 (repetition preference at the root): implemented, verified in isolation
+      (a synthetic fabricated-repetition test confirms the ordering nudge touches exactly the intended
+      move by exactly the intended amount, in both directions, and is a no-op at direction=0), ablated
+      vs phineas2-champion-v2-see: +8 =5 -7, score=0.525, CI [0.336,0.714], 0 failures.
+      **REJECTED** -- not a demonstrated improvement (see docs/phineas2/rejected-experiments.md).
+      Branch tip reset past it; the commit (`6af3ed8`) remains reachable by hash, not deleted.
+- [x] P4 candidate 3 (`bd6e8f6`): king safety (pawn-shield proxy) + development, both phase-scaled the
+      same direction as the mg/eg PST blend. ACCEPTED as **phineas2-champion-v3-kingsafety-dev**:
+      +11 =3 -6, score=0.625, 95% CI [0.431, 0.819], 0 failures.
+- [ ] P4 candidate 4 (passed pawns, phase-scaled the *opposite* direction -- more weight toward the
+      endgame): implemented, sanity-checked directly, correctness suite clean. Ablation next.
+- [ ] NEXT after candidate 4's ablation: P4 candidate 5 (true bitboard mobility, done properly, tried
+      last per the user's order since the old mobility term was net harmful) if candidates worth adding
+      remain; king activity was considered as part of candidate 4 but deferred -- the trained PST_EG
+      table already differentiates king squares by endgame value, so an explicit centralisation term
+      risks double-counting rather than adding a genuinely new signal the way passed pawns does.
+      Then Step 6: 24-40 games at 120+0.5 vs Stockfish 1800 (compare against the Step 3 baseline
+      number above), screen 2000 only if competitive, 2200 only if competitive at 2000. Then Step 8
+      (opening book, tablebase, retrained compact evaluator) if the ladder still has room to climb.
