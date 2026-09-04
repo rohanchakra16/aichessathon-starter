@@ -18,8 +18,14 @@ crash without losing the pipe.
 
 from __future__ import annotations
 
+import os
 import sys
 import time
+
+# Import "agent" from the process's own working directory rather than this
+# script's directory, so the same worker can drive either the live worktree
+# or a separate, frozen checkout of a tagged baseline (the driver sets cwd).
+sys.path.insert(0, os.getcwd())
 
 
 def main() -> None:
@@ -41,7 +47,8 @@ def main() -> None:
             sys.stdout.flush()
             continue
         elapsed_ms = (time.monotonic() - t0) * 1000.0
-        info = agent.LAST_INFO
+        # older (pre-telemetry) agent.py revisions may not expose LAST_INFO
+        info = getattr(agent, "LAST_INFO", {})
         sys.stdout.write(
             f"{uci}\t{info.get('score', 0)}\t{info.get('nodes', 0)}\t"
             f"{info.get('depth', 0)}\t{elapsed_ms:.1f}\n"

@@ -1,10 +1,10 @@
 """Phineas 2 search: njit iterative-deepening negamax / PVS with a hash TT.
 
-P2 scope: alpha-beta + principal-variation search, transposition table (hash
-key, depth stored in the entry, bucketed, generation-aged, never fully
-cleared), move ordering (TT move / MVV-LVA captures / two killers / history),
-and a quiescence search (stand-pat + captures + delta pruning). Null-move,
-LMR, futility and check extensions arrive in P3.
+Alpha-beta + principal-variation search, transposition table (hash key,
+depth stored in the entry, bucketed, generation-aged, never fully cleared),
+move ordering (TT move / SEE-ordered captures / two killers / history), a
+quiescence search (stand-pat + SEE-non-losing captures + delta pruning), and
+pruning (mate-distance, reverse-futility, null-move, frontier futility, LMR).
 
 The Python driver owns iterative deepening and the wall clock; a watchdog
 thread flips ``stop[0]`` and the njit tree reads it every 2048 nodes.
@@ -35,9 +35,6 @@ TT_EXACT, TT_LOWER, TT_UPPER = 0, 1, 2
 # how many plies of our own game history to carry in for repetition detection
 PREFIX_CAP = 96
 PLY_LIMIT = _c.MAXPLY - 2
-
-# MVV-LVA: victim value * 8 - attacker value, victim/attacker by piece_type 1..6
-_PIECE_VAL = np.array([0, 100, 320, 330, 500, 900, 20000], dtype=np.int64)
 
 # Zobrist components needed for the null move (read as module globals by njit).
 _ZS = _c.Z_SIDE
@@ -146,30 +143,21 @@ class Searcher:
 
 
 @njit(cache=False, nogil=True)
-def _mvv_lva(mbox, mv):
-    frm = mv & 0x3F
-    to = (mv >> 6) & 0x3F
-    kind = (mv >> 15) & 0xF
-    victim = 1
-    if kind == 5:  # en-passant
-        victim = 1
-    else:
-        vp = mbox[to]
-        victim = (vp % 6) + 1 if vp != 12 else 1
-    ap = mbox[frm]
-    attacker = (ap % 6) + 1 if ap != 12 else 1
-    return _PIECE_VAL[victim] * 8 - _PIECE_VAL[attacker]
-
-
-@njit(cache=False, nogil=True)
-def _score_moves(mbox, buf, mscore, ply, n, tt_move, killers, history):
+def _score_moves(bb, occ, mbox, buf, mscore, ply, n, tt_move, killers, history):
+    """Order captures by actual SEE (swap-off) value, not MVV-LVA: a capture
+    that loses material once every recapture is played out scores *below*
+    ordinary quiet moves instead of ahead of them, so the search stops
+    wasting early nodes -- and reduction/pruning budget -- trying piece
+    hangs before it tries plausible quiet moves."""
+    occ_all = occ[2]
     for i in range(n):
         mv = buf[ply, i]
         kind = (mv >> 15) & 0xF
         if mv == tt_move:
             mscore[ply, i] = 1_000_000_000
         elif kind == 4 or kind == 5 or kind == 7:
-            mscore[ply, i] = 500_000_000 + _mvv_lva(mbox, mv)
+            s = _c.see(bb, occ_all, mbox, mv)
+            mscore[ply, i] = 500_000_000 + s if s >= 0 else s
         elif kind == 6:  # quiet promotion
             mscore[ply, i] = 400_000_000 + ((mv >> 12) & 0x7)
         elif mv == killers[ply, 0]:
@@ -233,26 +221,28 @@ def _quiesce(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob,
         alpha = stand
 
     us = meta[0]
+    occ_all = occ[2]
     n = _c.gen_moves(bb, occ, meta, buf[ply])
-    # order: captures only
+    # order: captures only, by actual SEE value (not MVV-LVA) so a losing
+    # capture sorts last and gets skipped outright instead of merely
+    # de-prioritised -- this is what stops the search wasting quiescence
+    # nodes (and horizon) on hanging a piece into a well-defended square.
     for i in range(n):
         mv = buf[ply, i]
         kind = (mv >> 15) & 0xF
         if kind == 4 or kind == 5 or kind == 7:
-            mscore[ply, i] = 500_000_000 + _mvv_lva(mbox, mv)
+            mscore[ply, i] = _c.see(bb, occ_all, mbox, mv)
         else:
-            mscore[ply, i] = -1
+            mscore[ply, i] = -1_000_000
 
     for idx in range(n):
         mv = _pick_move(buf, mscore, ply, n, idx)
-        if mscore[ply, idx] < 0:
-            break
+        see_val = mscore[ply, idx]
+        if see_val < 0:
+            break  # remaining entries are losing captures or non-captures
         kind = (mv >> 15) & 0xF
-        # delta pruning
-        to = (mv >> 6) & 0x3F
-        vp = mbox[to]
-        victim_val = _PIECE_VAL[(vp % 6) + 1] if vp != 12 else 100
-        if stand + victim_val + 200 < alpha and kind != 7:
+        # delta pruning: even this capture's real (SEE) gain can't reach alpha
+        if stand + see_val + 200 < alpha and kind != 7:
             continue
         _c.make(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob, ply, mv)
         if _c.is_attacked(bb, occ[2], _c.king_sq(bb, us), 1 - us):
@@ -369,7 +359,7 @@ def _negamax(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob,
             return beta
 
     n = _c.gen_moves(bb, occ, meta, buf[ply])
-    _score_moves(mbox, buf, mscore, ply, n, tt_mv, killers, history)
+    _score_moves(bb, occ, mbox, buf, mscore, ply, n, tt_mv, killers, history)
 
     old_alpha = alpha
     best_score = -INF
@@ -498,7 +488,7 @@ def _search_root(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob,
     key = zob[0]
     slot = np.int64(key & TT_MASK)
     tt_mv = tt_move[slot] if (tt_key[slot] == key and tt_depth[slot] >= 0) else np.int32(0)
-    _score_moves(mbox, buf, mscore, 0, n, tt_mv, killers, history)
+    _score_moves(bb, occ, mbox, buf, mscore, 0, n, tt_mv, killers, history)
 
     best_score = -INF
     best_move = np.int32(0)

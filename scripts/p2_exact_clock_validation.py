@@ -61,11 +61,11 @@ def _board_from(opening: str) -> chess.Board:
 
 
 class Worker:
-    def __init__(self) -> None:
+    def __init__(self, target_dir: Path = WT) -> None:
         t0 = time.monotonic()
         self.proc = subprocess.Popen(
             [VENV_PY, "-u", str(WT / "scripts" / "p2_worker.py")],
-            cwd=str(WT), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            cwd=str(target_dir), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, text=True, bufsize=1,
         )
         ready = self.proc.stdout.readline().strip()
@@ -103,9 +103,9 @@ class Worker:
 
 
 def play_game(sf: chess.engine.SimpleEngine, p2_white: bool, opening: str,
-              base_ms: int, inc_ms: int, ply_cap: int) -> dict:
+              base_ms: int, inc_ms: int, ply_cap: int, target_dir: Path = WT) -> dict:
     board = _board_from(opening)
-    worker = Worker()
+    worker = Worker(target_dir)
     p2_side = chess.WHITE if p2_white else chess.BLACK
     clocks = {chess.WHITE: float(base_ms), chess.BLACK: float(base_ms)}
     moves: list[dict] = []
@@ -203,6 +203,12 @@ def main() -> None:
     ap.add_argument("--ply-cap", type=int, default=300)
     ap.add_argument("--out-dir", type=Path, default=Path("/tmp/claude-501/exact_clock"))
     ap.add_argument("--tag", type=str, default="run")
+    ap.add_argument("--target-dir", type=Path, default=WT,
+                     help="directory whose agent.py/weights/ are under test "
+                          "(defaults to the live worktree; point this at a "
+                          "separate frozen-tag checkout to test a pinned baseline "
+                          "without any risk of a concurrent code edit contaminating "
+                          "an in-flight run)")
     args = ap.parse_args()
 
     if not Path(STOCKFISH).exists():
@@ -220,6 +226,7 @@ def main() -> None:
         else f"NON-STANDARD CLOCK {args.base_ms}+{args.inc_ms} -- not a 120+0.5 claim"
     )
     print(f"Phineas2 vs Stockfish18(elo={args.elo}, limited)  {clock_claim}")
+    print(f"target: {args.target_dir}")
     print(f"{args.pairs} pairs ({args.pairs * 2} games), openings cycle over "
           f"{min(args.pairs, len(OPENINGS))} preregistered entries\n")
 
@@ -228,7 +235,8 @@ def main() -> None:
         for i in range(args.pairs):
             opening, name = OPENINGS[i % len(OPENINGS)]
             for p2_white in (True, False):
-                g = play_game(engine, p2_white, opening, args.base_ms, args.inc_ms, args.ply_cap)
+                g = play_game(engine, p2_white, opening, args.base_ms, args.inc_ms,
+                               args.ply_cap, args.target_dir)
                 games.append(g)
                 idx = len(games)
                 (out_dir / f"game{idx:03d}.pgn").write_text(g["pgn"])
