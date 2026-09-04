@@ -45,6 +45,13 @@ RFP_MARGIN = 85       # reverse-futility: eval - RFP_MARGIN*depth >= beta -> pru
 FUT_MARGIN = 120      # frontier futility for quiet moves
 NMP_MIN_PHASE = 3     # skip null move in near-zugzwang (very few pieces)
 
+# Root-only repetition ordering preference (see _root_repetition_bias): only
+# once the previous iteration gives some search confidence, and only when
+# its evaluation is clearly decided one way or the other.
+REP_MIN_DEPTH = 4
+REP_WIN_THRESHOLD = 150   # cp; below this the game is treated as undecided
+REP_MAX_BIAS = 60         # cp-equivalent cap on the ordering nudge
+
 
 class Searcher:
     """Owns the persistent search state (TT survives between moves in a game)."""
@@ -100,6 +107,21 @@ class Searcher:
         completed_depth = 0
         try:
             for depth in range(1, max_depth + 1):
+                # Root-only, ordering-only repetition preference: once a
+                # shallower iteration has already given a read on the
+                # position (search confidence), and only when that read is
+                # clearly decided (evaluation), nudge which of several
+                # REAL-SCORE-TIED root moves wins the tie-break -- toward
+                # avoiding an early repeat while winning, toward one while
+                # losing. It can never promote a move with a worse true
+                # score (see _root_repetition_bias); do not use it as a
+                # blanket contempt term or to refuse a forced draw.
+                rep_direction = 0
+                rep_mag = 0
+                if depth >= REP_MIN_DEPTH and abs(best_score) >= REP_WIN_THRESHOLD:
+                    rep_direction = -1 if best_score > 0 else 1
+                    rep_mag = min(REP_MAX_BIAS, abs(best_score) // 20)
+
                 score = _search_root(
                     pos.bb, pos.occ, pos.mbox, pos.meta, pos.zob,
                     pos.u_cap, pos.u_meta, pos.u_zob,
@@ -107,7 +129,7 @@ class Searcher:
                     self.hist_keys, nprefix,
                     self.tt_key, self.tt_move, self.tt_score, self.tt_depth,
                     self.tt_flag, self.tt_gen, self.generation,
-                    self.nodes, self.stop, self.pv, depth,
+                    self.nodes, self.stop, self.pv, depth, rep_direction, rep_mag,
                     _e.PST_MG, _e.PST_EG, _e.CASTLE_K, _e.CASTLE_Q, _e.BIAS, _e.MAX_PHASE,
                 )
                 if self.stop[0]:
@@ -202,6 +224,34 @@ def _is_repetition(hist_keys, base, ply, zob, halfmove):
                 return True
         i -= 2
     return False
+
+
+@njit(cache=False, nogil=True)
+def _root_repetition_bias(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob,
+                          buf, mscore, hist_keys, base, n, direction, mag):
+    """Nudge root move ORDERING (never the real negamax score of any move)
+    for a candidate that would recreate an earlier position from the actual
+    game. direction=-1 (winning: prefer the move be tried before an
+    equally-scored repeating one, i.e. avoid it), +1 (losing: prefer it be
+    tried first, i.e. head for the draw), 0 (no-op). Because this only
+    changes which of several REAL-SCORE-TIED moves is recorded as best under
+    the search's strict '>' comparison, it can never cause a move with a
+    worse true score to be chosen over one with a better true score -- it
+    only ever breaks ties among moves the search already judged equal."""
+    if direction == 0 or mag == 0:
+        return
+    for i in range(n):
+        mv = buf[0, i]
+        _c.make(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob, 0, mv)
+        z = zob[0]
+        repeats = False
+        for k in range(base):
+            if hist_keys[k] == z:
+                repeats = True
+                break
+        _c.unmake(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob, 0, mv)
+        if repeats:
+            mscore[0, i] += direction * mag
 
 
 @njit(cache=False, nogil=True)
@@ -478,7 +528,7 @@ def _negamax(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob,
 def _search_root(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob,
                  buf, mscore, killers, history, hist_keys, base,
                  tt_key, tt_move, tt_score, tt_depth, tt_flag, tt_gen, gen,
-                 nodes, stop, pv, depth,
+                 nodes, stop, pv, depth, rep_direction, rep_mag,
                  pst_mg, pst_eg, ck, cq, bias, maxph):
     alpha = -INF
     beta = INF
@@ -489,6 +539,8 @@ def _search_root(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob,
     slot = np.int64(key & TT_MASK)
     tt_mv = tt_move[slot] if (tt_key[slot] == key and tt_depth[slot] >= 0) else np.int32(0)
     _score_moves(bb, occ, mbox, buf, mscore, 0, n, tt_mv, killers, history)
+    _root_repetition_bias(bb, occ, mbox, meta, zob, u_cap, u_meta, u_zob,
+                          buf, mscore, hist_keys, base, n, rep_direction, rep_mag)
 
     best_score = -INF
     best_move = np.int32(0)
