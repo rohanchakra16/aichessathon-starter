@@ -1,82 +1,21 @@
 {
-  "baseline_margin_rmse": 170.30016272565513,
+  "baseline_margin_rmse": 204.1575008706778,
   "bias": 35.59750665328928,
-  "coefficient_delta_l2": 530.1603948408591,
-  "coefficient_delta_max": 102.64301944070024,
-  "cross_validation": {
-    "baseline_margin_rmse": 170.30016272565513,
-    "baseline_mrr": 0.5195804195804196,
-    "baseline_top1": 0.2937062937062937,
-    "candidate_margin_rmse": 170.57217429746026,
-    "candidate_mrr": 0.5370629370629371,
-    "candidate_top1": 0.32167832167832167,
-    "fold_count": 4,
-    "folds": [
-      {
-        "baseline_margin_rmse": 157.3674697016435,
-        "baseline_mrr": 0.5234848484848486,
-        "baseline_top1": 0.2727272727272727,
-        "candidate_margin_rmse": 171.17863763525528,
-        "candidate_mrr": 0.4598484848484848,
-        "candidate_top1": 0.22727272727272727,
-        "fold": 1,
-        "validation_games": [
-          2,
-          7
-        ],
-        "validation_groups": 22,
-        "validation_pairs": 91
-      },
-      {
-        "baseline_margin_rmse": 214.61771392390406,
-        "baseline_mrr": 0.5734567901234568,
-        "baseline_top1": 0.37037037037037035,
-        "candidate_margin_rmse": 210.6963019169575,
-        "candidate_mrr": 0.5611111111111111,
-        "candidate_top1": 0.3333333333333333,
-        "fold": 2,
-        "validation_games": [
-          0,
-          4
-        ],
-        "validation_groups": 27,
-        "validation_pairs": 109
-      },
-      {
-        "baseline_margin_rmse": 168.07468763027194,
-        "baseline_mrr": 0.5242138364779874,
-        "baseline_top1": 0.3018867924528302,
-        "candidate_margin_rmse": 168.75310151278362,
-        "candidate_mrr": 0.55062893081761,
-        "candidate_top1": 0.3584905660377358,
-        "fold": 3,
-        "validation_games": [
-          3,
-          6
-        ],
-        "validation_groups": 53,
-        "validation_pairs": 204
-      },
-      {
-        "baseline_margin_rmse": 145.5700537505997,
-        "baseline_mrr": 0.4760162601626016,
-        "baseline_top1": 0.24390243902439024,
-        "candidate_margin_rmse": 140.93103947259124,
-        "candidate_mrr": 0.5451219512195121,
-        "candidate_top1": 0.3170731707317073,
-        "fold": 4,
-        "validation_games": [
-          1,
-          5
-        ],
-        "validation_groups": 41,
-        "validation_pairs": 169
-      }
-    ],
-    "validation_groups": 143,
-    "validation_pairs": 573
+  "feature_consistency": {
+    "checked_positions": 96,
+    "mismatches": 0
   },
-  "final_margin_rmse": 118.38279441415594,
+  "final_margin_rmse": 203.80367545694403,
+  "independent_validation": {
+    "baseline_margin_rmse": 232.805010688491,
+    "baseline_mrr": 0.5490397805212613,
+    "baseline_top1": 0.2839506172839506,
+    "candidate_margin_rmse": 231.88623318826376,
+    "candidate_mrr": 0.5490397805212613,
+    "candidate_top1": 0.2839506172839506,
+    "dataset_sha256": "8eb497a6ab16c09c01af22d26f9f70c0bbe21ee7af4a2d2bc86a747a83d23236",
+    "validation_groups": 243
+  },
   "layout": {
     "castling": [
       768,
@@ -91,29 +30,193 @@
       384
     ],
     "phase_max": 24,
+    "positional_feature_names": [
+      "passed_pawn_count",
+      "passed_pawn_advance",
+      "doubled_pawns",
+      "isolated_pawns",
+      "connected_pawns",
+      "king_centralisation",
+      "rook_behind_passer",
+      "king_pawn_proximity",
+      "king_tropism_decided",
+      "progress_gradient"
+    ],
+    "positional_offset": 770,
     "relative_square_orientation": "white=a1..h8; black vertically mirrored"
   },
   "materially_drives": "all non-terminal search leaf evaluations",
-  "model_kind": "pairwise_finetuned_tapered_piece_square_evaluator",
-  "schema_version": 5,
+  "model_kind": "frozen_psqt_with_positional_endgame_residual",
+  "penalty_cross_validation": [
+    {
+      "cross_validation": {
+        "baseline_margin_rmse": 204.1575008706778,
+        "baseline_mrr": 0.5663368848300353,
+        "baseline_top1": 0.3028919330289193,
+        "candidate_margin_rmse": 201.5282207697386,
+        "candidate_mrr": 0.5654490106544897,
+        "candidate_top1": 0.2983257229832572,
+        "fold_count": 4,
+        "validation_groups": 657,
+        "validation_pairs": 1674
+      },
+      "ridge_penalty": 10.0
+    },
+    {
+      "cross_validation": {
+        "baseline_margin_rmse": 204.1575008706778,
+        "baseline_mrr": 0.5663368848300353,
+        "baseline_top1": 0.3028919330289193,
+        "candidate_margin_rmse": 201.67644035180203,
+        "candidate_mrr": 0.563546423135464,
+        "candidate_top1": 0.2968036529680365,
+        "fold_count": 4,
+        "validation_groups": 657,
+        "validation_pairs": 1674
+      },
+      "ridge_penalty": 100.0
+    },
+    {
+      "cross_validation": {
+        "baseline_margin_rmse": 204.1575008706778,
+        "baseline_mrr": 0.5663368848300353,
+        "baseline_top1": 0.3028919330289193,
+        "candidate_margin_rmse": 202.71920773683937,
+        "candidate_mrr": 0.5644342973110094,
+        "candidate_top1": 0.2983257229832572,
+        "fold_count": 4,
+        "validation_groups": 657,
+        "validation_pairs": 1674
+      },
+      "ridge_penalty": 1000.0
+    },
+    {
+      "cross_validation": {
+        "baseline_margin_rmse": 204.1575008706778,
+        "baseline_mrr": 0.5663368848300353,
+        "baseline_top1": 0.3028919330289193,
+        "candidate_margin_rmse": 203.90786749538674,
+        "candidate_mrr": 0.5670979198376457,
+        "candidate_top1": 0.30441400304414,
+        "fold_count": 4,
+        "validation_groups": 657,
+        "validation_pairs": 1674
+      },
+      "ridge_penalty": 10000.0
+    },
+    {
+      "cross_validation": {
+        "baseline_margin_rmse": 204.1575008706778,
+        "baseline_mrr": 0.5663368848300353,
+        "baseline_top1": 0.3028919330289193,
+        "candidate_margin_rmse": 204.13064344096782,
+        "candidate_mrr": 0.5663368848300353,
+        "candidate_top1": 0.3028919330289193,
+        "fold_count": 4,
+        "validation_groups": 657,
+        "validation_pairs": 1674
+      },
+      "ridge_penalty": 100000.0
+    }
+  ],
+  "residual_bounds": {
+    "connected_pawns": [
+      0.0,
+      22.0
+    ],
+    "doubled_pawns": [
+      -28.0,
+      0.0
+    ],
+    "isolated_pawns": [
+      -28.0,
+      0.0
+    ],
+    "king_centralisation": [
+      0.0,
+      30.0
+    ],
+    "king_pawn_proximity": [
+      0.0,
+      26.0
+    ],
+    "king_tropism_decided": [
+      0.0,
+      40.0
+    ],
+    "passed_pawn_advance": [
+      0.0,
+      22.0
+    ],
+    "passed_pawn_count": [
+      0.0,
+      36.0
+    ],
+    "progress_gradient": [
+      0.0,
+      44.0
+    ],
+    "rook_behind_passer": [
+      0.0,
+      26.0
+    ]
+  },
+  "residual_coefficients": {
+    "connected_pawns": 0.0,
+    "doubled_pawns": -0.4220950198898732,
+    "isolated_pawns": -0.7104477379494332,
+    "king_centralisation": 0.08652263255115904,
+    "king_pawn_proximity": 0.0,
+    "king_tropism_decided": 3.2389586923651397,
+    "passed_pawn_advance": 0.6788403680738874,
+    "passed_pawn_count": 0.0,
+    "progress_gradient": 0.0,
+    "rook_behind_passer": 0.015357070580038034
+  },
+  "schema_version": 7,
+  "selected_cross_validation": {
+    "baseline_margin_rmse": 204.1575008706778,
+    "baseline_mrr": 0.5663368848300353,
+    "baseline_top1": 0.3028919330289193,
+    "candidate_margin_rmse": 203.90786749538674,
+    "candidate_mrr": 0.5670979198376457,
+    "candidate_top1": 0.30441400304414,
+    "fold_count": 4,
+    "validation_groups": 657,
+    "validation_pairs": 1674
+  },
   "training": {
     "active_champion_agent_sha256": "f51df428bd58a65c8951fd5a97d00fceafcecd338007a0eb2eee4eb728b14b5f",
     "active_champion_model_sha256": "c90931f80e1a6e2c76d5f94203849e35908b214519e95245e229bde3246f02cc",
     "active_dataset_sha256": "37708959ecf7e64abecce9de89e990cc23dc49dcea45da9aabebbb11c26b90f0",
     "active_examples": 859,
     "active_pairs": 573,
-    "base_model_sha256": "c90931f80e1a6e2c76d5f94203849e35908b214519e95245e229bde3246f02cc",
+    "base_model_sha256": "64a1514dcb5d7aa7a93ca3a4772e8f5e76df7590a7eec07506a194ffa36a59fd",
     "external_engine_used": true,
+    "fold_count": 4,
     "label_clip_centipawns": 1500.0,
     "margin_clip_centipawns": 300.0,
-    "method": "ridge-anchored pairwise teacher move-ranking fine-tune",
+    "method": "frozen 770-weight PSQT plus bounded positional/endgame residual",
+    "objective": "pairwise teacher move-ranking margin (reused from champion)",
     "protected_opening_list_used": false,
-    "ridge_penalty": 10.0,
+    "residual_script": "training/train_positional_evaluator.py",
+    "residual_script_sha256": "296a15650c423b23517fc795c5b98be42e41bb5f79a51561c22cf66b8b5edb13",
+    "residual_seed": 20260904,
+    "ridge_penalties_considered": [
+      10.0,
+      100.0,
+      1000.0,
+      10000.0,
+      100000.0
+    ],
+    "ridge_penalty": 10000.0,
     "script": "training/train_pairwise_psqt_finetune.py",
     "script_sha256": "e344c847228098e5f179e7eed893b182489d29ee86e6a91df832bc02078bdc9f",
-    "selection": "complete-game cross-validation before full-data fit",
+    "selection": "game-grouped cross-validation on the training set only",
     "teacher_binary_sha256": "ae4c93fa9676ca7750d0714342fd8a5b1d018000fc6e0f6cedf112067b5ef374",
-    "teacher_name": "Stockfish 18"
+    "teacher_name": "Stockfish 18",
+    "training_dataset_sha256": "3646a646a463269a3b5742350cfb64d86c33a5c502a9672432eee91304e80115",
+    "validation_dataset_sha256": "8eb497a6ab16c09c01af22d26f9f70c0bbe21ee7af4a2d2bc86a747a83d23236"
   },
   "weights": [
     100.0,
@@ -885,6 +988,16 @@
     6.40467460283142,
     0.4354244799862834,
     9.620598830088088,
-    55.6838247049794
+    55.6838247049794,
+    0.0,
+    0.6788403680738874,
+    -0.4220950198898732,
+    -0.7104477379494332,
+    0.0,
+    0.08652263255115904,
+    0.015357070580038034,
+    0.0,
+    3.2389586923651397,
+    0.0
   ]
 }
