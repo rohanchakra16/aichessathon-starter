@@ -4,11 +4,25 @@ Branch: `phineas2` (worktree). Never touch `main` / the champion while this runs
 Started 2026-09-04. Goal: reliable engine at ~1800 (min) / 2000 (competitive) / 2200+ (stretch)
 under 120+0.5, one core, that clearly beats the current protected champion (exp-0089, `4a0c988`).
 
-## CURRENT STATUS (2026-09-05) — v9 is submission-decision-ready
+## CURRENT STATUS (2026-09-05) — Ferb v2 is LIVE; new target is 2400-2500 (IM)
 
-**Internal champion: `phineas2-champion-v9-deeperbook`** (tag; HEAD of the `phineas2` branch,
-commit `849dd6b` / engine at `bb4ad10`). Nothing on `main` has been touched; the protected champion
-is intact as the safe fallback. Nothing has been uploaded.
+Project renamed **Phineas 2 -> Ferb** (user, 2026-09-05). New strength target: **Elo 2400-2500,
+IM level**, in the competition's own (deflated) rating scale — the field improves during the
+qualifier and the user wants to win outright. The protected champion sits ~1190-1210 on that scale.
+
+**LIVE competition submission: `ferb-v2`** (tag; branch `ferb`; engine commit `8e4d4b7`).
+= `phineas2-champion-v9-deeperbook` + a one-file fix (a corrupt 404-HTML tablebase file with a
+mangled name, `weights/syzygy/KRvKR.rtbzKRvKR.rtbz`, from a download-loop bug, failed the
+competition Docker build at `COPY . /agent`; removed it, added the real `KRvKR.rtbz`) + a cosmetic
+agent.py docstring rename. The first attempt (`ferb-v1`, dashboard "v4") FAILED the build on that
+corrupt file; `ferb-v2` (dashboard "v5") passed build + smoke test cleanly and is Active.
+Branch `ferb-notb` is a tablebase-stripped fallback that was prepared but NOT uploaded.
+Nothing on `main` has been touched; the protected champion is intact as the safe fallback.
+
+Two findings from the live validation log:
+- numba JIT warm-up took **~40-44s in the competition container** (vs ~14s on the dev machine) --
+  ~half the 90s init budget. Any new numba code (NNUE) must keep its compile lean.
+- per-move times fine (slowest 4.4s), no crashes/flags/illegal, smoke games "valid".
 
 Validation, all at the real 120s+0.5s clock, one core, alternating colours over preregistered openings,
 Phineas 2 in its own fresh process per game (mirrors the competition protocol):
