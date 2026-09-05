@@ -40,3 +40,26 @@ hash (not deleted) even after the branch tip moves past it.
   larger sample, or targeted at constructed near-tie positions specifically,
   if a real game or larger batch surfaces the actual pathology -- to be
   judged on that future evidence, not on theory alone.
+
+### UPDATE: revived and accepted as phineas2-champion-v6-repetition
+
+The predicted trigger arrived. A Step-7 real-clock screen against Stockfish
+elo 2200 (`/tmp/claude-501/exact_clock/screen2200-exactclock_elo2200/`,
+game 8) showed the candidate's own champion (v5-mobility, no repetition
+preference at all) sit at a self-evaluated +666cp in a king+bishop+2-pawns
+technical endgame for ten consecutive of its own moves, depths 22-37 --
+including *after* promoting a new queen -- while it shuffled into a
+threefold-repetition draw it never needed to accept. That is exactly the
+failure mode this candidate targets, observed live, not hypothesised.
+
+The unchanged mechanism (commit `6af3ed8`, reapplied verbatim on top of
+`phineas2-champion-v5-mobility` as commit `832a700`) was re-ablated at a
+larger sample given the stronger justification: 30 games, 30s+0.3s, vs
+`phineas2-champion-v5-mobility`:
+`+18 =6 -6   score=0.700   95% CI [0.557, 0.843]   0 failures`
+
+This is a clean accept -- CI entirely above 0.5, more than double the sample
+of the first attempt. The original rejection was a false negative from too
+small a sample on a low-frequency-but-high-value fix, exactly as the "why
+the null result isn't surprising" note above anticipated. Tagged
+`phineas2-champion-v6-repetition`.

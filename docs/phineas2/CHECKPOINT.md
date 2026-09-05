@@ -161,11 +161,41 @@ near-zero cross-depth reuse. `MAX_DEPTH=8` hard cap. Time budget fixed 2.0s rega
       **phineas2-champion-v5-mobility**: +17 =0 -3, score=0.850, 95% CI [0.694, 1.000], 0 failures --
       the strongest single-candidate result of the sequence.
 - [x] **P4 COMPLETE.** All five of the user's named priority items resolved: (1) SEE accepted,
-      (2) repetition preference rejected (docs/phineas2/rejected-experiments.md), (3) king safety +
-      development accepted, (4) passed pawns accepted, (5) mobility accepted. Current internal champion:
-      **phineas2-champion-v5-mobility**, HEAD of the `phineas2` branch.
-- [ ] NEXT: Step 6, a larger 24-40 game exact-clock (120+0.5) confirmation vs Stockfish elo 1800,
-      compared against the Step 3 baseline number above (phineas2-baseline-p1p3: score=0.464). Then
-      screen 2000 only if competitive at 1800, 2200 only if competitive at 2000 -- do not spend a large
-      batch at a level a small screen already shows is clearly outmatched. Then Step 8 (opening book,
-      tablebase, retrained compact evaluator) if the ladder still has room to climb.
+      (2) repetition preference rejected then revived (see below), (3) king safety + development
+      accepted, (4) passed pawns accepted, (5) mobility accepted.
+- [x] Step 6: 30-game 120+0.5 confirmation vs Stockfish elo 1800 on phineas2-champion-v5-mobility:
+      **+16 =2 -12, score=0.567, 95% CI [0.395, 0.738], 0 failures.** Real improvement over the Step 3
+      baseline (0.464), but the CI still straddles 0.5 -- not yet a statistically airtight superiority
+      claim. By colour: white 0.700, black 0.400 -- confirms the weak-as-Black pattern is real (note:
+      this is the opposite phrasing from the user's step 8 "weak White openings" -- the actual evidence
+      says weak as Black, flagged explicitly rather than silently reconciled).
+- [x] Step 7 ladder screening, done as small real-clock checks rather than fast-clock ones after the
+      fast-clock elo-1800 screen (0.417) turned out to badly understate the real-clock result (0.567) --
+      Stockfish's UCI_LimitStrength evidently doesn't scale with time the way Phineas's own search does,
+      so a fast-clock screen systematically misclassifies this matchup:
+        - elo 2000, 8 games @ 120+0.5: +7 =0 -1, score=0.875, 95% CI [0.646, 1.000] -- clearly competitive.
+        - elo 2200, 8 games @ 120+0.5: +3 =1 -4, score=0.438, 95% CI [0.116, 0.759] -- roughly even,
+          n too small to call either way. One of these 8 games (below) directly motivated candidate 2's
+          revival.
+- [x] **P4 candidate 2 REVIVED AND ACCEPTED** (commit `832a700`, tag **phineas2-champion-v6-repetition**):
+      the elo-2200 screen's game 8 showed v5-mobility's own search sit at self-evaluated +666cp in a
+      won king+bishop+2-pawns endgame for ten consecutive moves (depths 22-37, including after
+      promoting a new queen) while shuffling into a threefold-repetition draw -- the exact failure mode
+      the rejected candidate targeted, observed live. Reapplied the unchanged mechanism from `6af3ed8`
+      and re-ablated at a larger sample (30 games vs 20 the first time): **+18 =6 -6, score=0.700, 95%
+      CI [0.557, 0.843], 0 failures** -- clean accept, CI entirely above 0.5. Full writeup in
+      docs/phineas2/rejected-experiments.md (kept there under the original entry, marked as revived,
+      rather than moved -- the rejection-then-revival history is itself the useful record).
+      **Current internal champion: phineas2-champion-v6-repetition, HEAD of the `phineas2` branch.**
+- Cross-checked against the actual champion's last 15 live rated-round games (user-supplied PGNs/logs,
+  2026-09-04): champion scored 6/15 = 0.40 live (white 0.375, black 0.286 -- same weak-as-Black
+  direction independently confirmed), with 4/15 games (27%) ending in threefold repetition and two
+  fast tactical collapses (mate in 20 and mate by move 31) resembling exactly the king-safety/tactical
+  weaknesses Phineas 2's P4 work targeted. Not code-relevant (Phineas 2 shares no implementation with
+  the champion) but useful independent corroboration that the diagnosed problem classes are real and
+  that repetition-of-winning-positions is a recurring pattern worth the P4 candidate-2 attention it got.
+- [ ] NEXT: re-run the elo-2200 real-clock screen at a larger sample now that v6 includes the fix for
+      the exact failure that screen surfaced, before deciding whether 2200 is a full-batch target or a
+      "return to development" case per step 7. Depending on that: either the full 24-40 game exact-clock
+      confirmation batches at 2000 and/or 2200, or pivot to Step 8 (opening book -- especially addressing
+      the weak-as-Black pattern confirmed twice now, endgame tablebase, retrained compact evaluator).
