@@ -253,7 +253,18 @@ near-zero cross-depth reuse. `MAX_DEPTH=8` hard cap. Time budget fixed 2.0s rega
       is closing the 2200 gap, not just improving general play. Still technically <0.5 and n=16, but no
       longer "clearly outmatched"; per step 7 this now justifies continued investment at 2200 rather
       than writing it off.
-- [ ] NEXT: given the book's outsized effect and low cost/risk relative to the retrained-evaluator
-      option, deepen it (more plies, wider branch) before attempting the higher-effort, higher-risk
-      evaluator retrain -- proven, cheap lever first. Re-screen 2200 (larger sample) once the deeper
-      book lands to see whether the trend (0.344 -> 0.312 -> 0.469 across v6/v7/v8) continues.
+- [x] Step 8 candidate 3 (`bb4ad10`): deepened the book to 238 entries / 14 plies (root-heavy branch:
+      2 for the first 6 plies, 1 beyond that so depth grows without the node count exploding). Every
+      entry independently re-verified legal. ACCEPTED as **phineas2-champion-v9-deeperbook** after
+      ablation vs v8-book: +19 =2 -9, score=0.667, 95% CI [0.504, 0.829], 0 failures -- CI lower bound
+      essentially at 0.5, same bar as SEE and king-safety earlier.
+      Screened v9 at elo 2200 (16 games @ 120+0.5): **+9 =1 -6, score=0.594, 95% CI [0.361, 0.826].**
+      First screen in the whole 2200 sequence with a point estimate clearly above 0.5. Full trend across
+      the last four internal-champion versions at this exact level, same 16-game screen each time:
+      v6=0.344 -> v7=0.312 -> v8=0.469 -> v9=0.594. Real, monotonic (since v7) improvement, not noise --
+      each step corresponds to an accepted, ablation-confirmed candidate. Still n=16 per point, CI still
+      wide, not yet a statistically airtight "beats 2200" claim.
+- [ ] NEXT: this trend is strong enough to warrant a proper larger confirmation batch at elo 2200 (in
+      progress / next action) rather than another small screen. If that holds up, the retrained-evaluator
+      item becomes optional headroom rather than a requirement; if it regresses toward the mean, it
+      becomes the next lever to pull.
