@@ -8,10 +8,9 @@ make/unmake, ``weights.p2eval`` is the tapered piece-square evaluation seeded
 from the trained model ``weights/model.json`` plus hand-added king-safety /
 passed-pawn / mobility terms, ``weights.p2search`` is the iterative-deepening
 principal-variation search (hash TT, SEE-ordered moves, null-move / LMR /
-futility pruning, quiescence), ``weights.p2tb`` probes the shipped 3-4-piece
-Syzygy tablebases (``weights/syzygy/``) for exact endgame play once few enough
-pieces remain, and ``weights.p2book`` is a compact opening book generated
-offline (Stockfish used only as a development oracle, never at runtime).
+futility pruning, quiescence), and ``weights.p2book`` is a compact opening
+book generated offline (Stockfish used only as a development oracle, never at
+runtime).
 
 The competition starts one process per game, so module state here is per-game
 state: a fresh transposition table and the list of root positions we have been
@@ -23,7 +22,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from weights import p2book, p2tb
+from weights import p2book
 from weights.p2pos import Position
 from weights.p2search import Searcher
 
@@ -77,11 +76,6 @@ def get_move(fen: str, time_left_ms: int) -> str:
     if book_move is not None:
         LAST_INFO.update(score=0, nodes=0, depth=-2, budget_ms=0)
         return book_move
-
-    tb_move = p2tb.probe_best_move(fen)
-    if tb_move is not None:
-        LAST_INFO.update(score=0, nodes=0, depth=-1, budget_ms=0)
-        return tb_move
 
     prefix = np.asarray(_ROOT_KEYS[:-1], dtype=np.uint64) if len(_ROOT_KEYS) > 1 else None
     budget = _budget_ms(time_left_ms, int(pos.meta[4]))
