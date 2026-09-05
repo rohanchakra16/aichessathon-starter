@@ -4,7 +4,10 @@ Thin, judge-readable wrapper. All engine logic lives under ``weights/`` (which
 ships in the zip and is import-safe): ``weights.p2core`` is the numba-jitted
 bitboard move generator and make/unmake, ``weights.p2eval`` is the tapered
 piece-square evaluation seeded from the trained model ``weights/model.json``,
-and ``weights.p2search`` is the iterative-deepening principal-variation search.
+``weights.p2search`` is the iterative-deepening principal-variation search,
+and ``weights.p2tb`` probes the shipped 3-4-piece Syzygy tablebases
+(``weights/syzygy/``) for exact, non-negotiable endgame play once few enough
+pieces remain.
 
 The competition starts one process per game, so module state here is per-game
 state: a fresh transposition table and the list of root positions we have been
@@ -16,6 +19,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from weights import p2tb
 from weights.p2pos import Position
 from weights.p2search import Searcher
 
@@ -64,6 +68,11 @@ def _budget_ms(time_left_ms: int, movenum: int) -> float:
 def get_move(fen: str, time_left_ms: int) -> str:
     pos = Position.from_fen(fen)
     _ROOT_KEYS.append(int(pos.zob[0]))
+
+    tb_move = p2tb.probe_best_move(fen)
+    if tb_move is not None:
+        LAST_INFO.update(score=0, nodes=0, depth=-1, budget_ms=0)
+        return tb_move
 
     prefix = np.asarray(_ROOT_KEYS[:-1], dtype=np.uint64) if len(_ROOT_KEYS) > 1 else None
     budget = _budget_ms(time_left_ms, int(pos.meta[4]))
