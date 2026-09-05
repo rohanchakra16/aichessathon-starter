@@ -1,12 +1,15 @@
-"""Phineas 2 — AI Chessathon agent entry point.
+"""Ferb — AI Chessathon agent entry point.
 
-Thin, judge-readable wrapper. All engine logic lives under ``weights/`` (which
-ships in the zip and is import-safe): ``weights.p2core`` is the numba-jitted
-bitboard move generator and make/unmake, ``weights.p2eval`` is the tapered
-piece-square evaluation seeded from the trained model ``weights/model.json``,
-``weights.p2search`` is the iterative-deepening principal-variation search,
-``weights.p2tb`` probes the shipped 3-4-piece Syzygy tablebases
-(``weights/syzygy/``) for exact, non-negotiable endgame play once few enough
+A from-scratch engine (the module prefix ``p2`` is a historical artefact of
+the project's earlier working name). Thin, judge-readable wrapper: all engine
+logic lives under ``weights/`` (which ships in the zip and is import-safe).
+``weights.p2core`` is the numba-jitted bitboard move generator and
+make/unmake, ``weights.p2eval`` is the tapered piece-square evaluation seeded
+from the trained model ``weights/model.json`` plus hand-added king-safety /
+passed-pawn / mobility terms, ``weights.p2search`` is the iterative-deepening
+principal-variation search (hash TT, SEE-ordered moves, null-move / LMR /
+futility pruning, quiescence), ``weights.p2tb`` probes the shipped 3-4-piece
+Syzygy tablebases (``weights/syzygy/``) for exact endgame play once few enough
 pieces remain, and ``weights.p2book`` is a compact opening book generated
 offline (Stockfish used only as a development oracle, never at runtime).
 
