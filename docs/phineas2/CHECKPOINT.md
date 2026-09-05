@@ -194,8 +194,25 @@ near-zero cross-depth reuse. `MAX_DEPTH=8` hard cap. Time budget fixed 2.0s rega
   weaknesses Phineas 2's P4 work targeted. Not code-relevant (Phineas 2 shares no implementation with
   the champion) but useful independent corroboration that the diagnosed problem classes are real and
   that repetition-of-winning-positions is a recurring pattern worth the P4 candidate-2 attention it got.
-- [ ] NEXT: re-run the elo-2200 real-clock screen at a larger sample now that v6 includes the fix for
-      the exact failure that screen surfaced, before deciding whether 2200 is a full-batch target or a
-      "return to development" case per step 7. Depending on that: either the full 24-40 game exact-clock
-      confirmation batches at 2000 and/or 2200, or pivot to Step 8 (opening book -- especially addressing
-      the weak-as-Black pattern confirmed twice now, endgame tablebase, retrained compact evaluator).
+- [x] Re-screened v6 vs elo 2200 at a larger real-clock sample (16 games, doubling the earlier 8):
+      +4 =3 -9, score=0.344, 95% CI [0.137, 0.551]. Combined with the earlier 8-game screen (both on
+      v6 code, before and after -- the first 8 predate v6, technically mixed vintage, but the direction
+      is consistent): 24 games total, W=7 D=4 L=13, score=0.375. This is now a fairly clear "not yet
+      competitive at 2200" signal -- per step 7, do NOT spend a large batch confirming 2200 right now.
+      Inspected the 3 draws in the 16-game screen: game 2 is the mechanism working *correctly* (Black's
+      own score was ~-29966, i.e. a near-mate losing score, and it correctly steered into a repetition
+      draw rather than accepting the loss -- exactly "still takes a draw from a losing position"); game
+      12 plateaus at a genuine 0 (drawn king-and-pawn-ish ending, not a bug); but game 9 (White, +268cp
+      rook-shuffle repeated away down to +90 before the draw) shows the v6 fix is not a complete
+      solution -- it can only pick among moves the search already judged tied, and some technical
+      endgame conversions are apparently still beyond the search's horizon to find a genuinely better
+      alternative to shuffling. A real, expected limitation, not a regression; the ablation still shows
+      net benefit. Per-colour split in this batch reversed from Steps 3/6 (white 0.1875, black 0.5 here)
+      -- likely small-sample (n=8/colour) noise given openings differ per colour slot, not a stable
+      finding; do not treat "weak as White" as established from this alone.
+- [ ] NEXT: full 24-40 game exact-clock confirmation at elo 2000 (the number worth nailing down
+      rigorously, given the strong small-sample signal there and Step 7's guidance not to over-invest at
+      a level (2200) a screen already shows as not yet competitive). Then Step 8: opening book (targeting
+      the weak-as-Black pattern independently confirmed in Steps 3, 6, and the live champion cross-check),
+      endgame tablebase (directly relevant to the game-9-style "hard to convert" technical endgames just
+      observed), retrained compact evaluator.
