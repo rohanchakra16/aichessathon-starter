@@ -264,7 +264,25 @@ near-zero cross-depth reuse. `MAX_DEPTH=8` hard cap. Time budget fixed 2.0s rega
       v6=0.344 -> v7=0.312 -> v8=0.469 -> v9=0.594. Real, monotonic (since v7) improvement, not noise --
       each step corresponds to an accepted, ablation-confirmed candidate. Still n=16 per point, CI still
       wide, not yet a statistically airtight "beats 2200" claim.
-- [ ] NEXT: this trend is strong enough to warrant a proper larger confirmation batch at elo 2200 (in
-      progress / next action) rather than another small screen. If that holds up, the retrained-evaluator
-      item becomes optional headroom rather than a requirement; if it regresses toward the mean, it
-      becomes the next lever to pull.
+- [x] Full 30-game 120+0.5 confirmation at elo 2200, v9-deeperbook: **+11 =7 -12, score=0.483, 95% CI
+      [0.327, 0.640], 0 failures.** Regresses toward the mean from the 16-game screen's 0.594, same
+      pattern as the elo-2000 confirmation earlier (0.875 screen -> 0.500 confirmed). This is the number
+      to trust: **Phineas 2 (v9) plays essentially dead-even with Stockfish-2200-equivalent at the real
+      competition clock** -- not a proven "beats 2200" claim (CI still spans meaningfully below 0.5),
+      but no longer a real gap either, and a large, genuine improvement from the pre-P4 baseline (elo
+      1800 was 0.464 back at Step 3).
+      **Full honest ladder, each figure a real n=30 (or n=24 for the pre-book 2200 figure) confirmation,
+      not a small screen:** elo 1800 = 0.567, elo 2000 = 0.500, elo 2200 = 0.483. This reads less like "a
+      wall at 2200" and more like Phineas 2's real strength sitting close to 2000-2100 across this whole
+      band, with the ladder resolution (roughly 200-Elo steps) too coarse to distinguish 2000 from 2200
+      precisely -- consistent with the top of the live leaderboard sitting "just past 2100" after day one.
+- [ ] NEXT: per the pre-registered decision criterion above, this result (regression toward the mean
+      rather than holding the 16-game trend) means the retrained compact evaluator is the next lever
+      worth pulling if further gains are wanted -- it is the only remaining Step 8 item and the one most
+      likely to move the whole band up rather than patch one more specific failure mode. It is also
+      materially bigger and riskier than anything done so far (a full data-generation + training
+      pipeline, not a self-contained module), so treating it as a separate, explicitly-scoped effort
+      rather than folding it into this session's momentum. In the meantime: phineas2-champion-
+      v9-deeperbook is a fully validated, reliable, substantially-stronger-than-the-champion candidate,
+      ready for a submission decision at its current strength (~2000-2100-equivalent) if the user wants
+      to stop here rather than continue chasing 2200+.
