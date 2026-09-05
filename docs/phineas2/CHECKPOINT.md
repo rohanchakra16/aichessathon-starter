@@ -210,9 +210,37 @@ near-zero cross-depth reuse. `MAX_DEPTH=8` hard cap. Time budget fixed 2.0s rega
       net benefit. Per-colour split in this batch reversed from Steps 3/6 (white 0.1875, black 0.5 here)
       -- likely small-sample (n=8/colour) noise given openings differ per colour slot, not a stable
       finding; do not treat "weak as White" as established from this alone.
-- [ ] NEXT: full 24-40 game exact-clock confirmation at elo 2000 (the number worth nailing down
-      rigorously, given the strong small-sample signal there and Step 7's guidance not to over-invest at
-      a level (2200) a screen already shows as not yet competitive). Then Step 8: opening book (targeting
-      the weak-as-Black pattern independently confirmed in Steps 3, 6, and the live champion cross-check),
-      endgame tablebase (directly relevant to the game-9-style "hard to convert" technical endgames just
-      observed), retrained compact evaluator.
+- [x] Full 30-game 120+0.5 confirmation at elo 2000, v6-repetition: **+10 =10 -10, score=0.500, 95% CI
+      [0.354, 0.646], 0 failures.** Regression to the mean from the 8-game screen's 0.875 -- the small
+      sample badly overestimated. This is the number to trust: Phineas 2 currently plays almost exactly
+      Stockfish-2000-equivalent strength at the real clock. Colour split this time: white 0.500, black
+      0.500 -- perfectly even, directly contradicting the weak-as-Black pattern from Steps 3/6 and the
+      live cross-check. Combined with the elo-2200 batches' colour reversal (v6: white 0.1875, black
+      0.5), the colour effect is evidently NOISE across these sample sizes, not a stable structural
+      weakness -- retracting the earlier "confirmed weak-as-Black" framing; it was real in two samples
+      and absent/reversed in two others.
+      The ladder is now coherent and monotonic: elo 1800 -> 0.567 (30 games), elo 2000 -> 0.500 (30
+      games), elo 2200 -> 0.375 (24 games pre-tablebase). Phineas 2 sits at roughly the 2000 mark itself,
+      not yet the 2200 the user has since confirmed is the actual qualification bar for the London final
+      (top of the live leaderboard already past 2100 after day one, 235 teams, seats decided by 24-40
+      game... by Swiss ranking, not a fixed threshold, but 2200+ is the realistic target to be safe).
+- [x] Step 8 candidate 1 (`2d5d128`): Syzygy 3-4-piece WDL+DTZ tablebases (weights/syzygy/, ~4.3MB,
+      weights/p2tb.py). Directly targets the diagnosed conversion-failure pattern (a large advantage
+      shuffled into a draw in a simplified endgame) with an exact, provably-safe-by-construction fix
+      (maximises our own WDL category first, so a win can never become a draw/loss under this mechanism;
+      DTZ breaks ties toward real progress). ACCEPTED as **phineas2-champion-v7-tablebase** after
+      ablation vs v6-repetition: +17 =5 -8, score=0.650, 95% CI [0.496, 0.804], 0 failures.
+      Re-screened v7 at elo 2200 (16 games @ 120+0.5) to see whether it closed the 2200 gap:
+      **+4 =2 -10, score=0.312, 95% CI [0.103, 0.522].** Not better than v6's number there, though
+      notably `winning_position_draws: 0` this time (down from 1) -- the specific pathology the
+      tablebase targets did stop showing up in this sample, consistent with the ablation's positive
+      result, but it was evidently a minor contributor to the overall 2200 gap, not the primary one.
+      Most 2200 losses are ordinary being-outplayed, not thrown-away wins. Accepted regardless: the
+      ablation shows a genuine, safe improvement in general play even though it didn't move the 2200
+      needle specifically -- these are different questions (does it help vs. does it close THIS gap).
+- [ ] NEXT: per step 7, do not spend further large batches confirming 2200 -- the gap there needs a
+      stronger core (evaluator and/or search), not another targeted patch. Building an opening book next
+      (cheapest remaining Step 8 lever, saves real clock time as a side benefit, no training pipeline
+      needed) followed by a retrained compact evaluator if time allows -- the higher-risk, higher-ceiling
+      item most likely to actually close a 200-Elo-class gap, now that the user has confirmed 2200+ is
+      the real qualification bar rather than a stretch goal.
