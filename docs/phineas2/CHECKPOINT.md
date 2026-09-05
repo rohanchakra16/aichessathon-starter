@@ -4,6 +4,40 @@ Branch: `phineas2` (worktree). Never touch `main` / the champion while this runs
 Started 2026-09-04. Goal: reliable engine at ~1800 (min) / 2000 (competitive) / 2200+ (stretch)
 under 120+0.5, one core, that clearly beats the current protected champion (exp-0089, `4a0c988`).
 
+## CURRENT STATUS (2026-09-05) — v9 is submission-decision-ready
+
+**Internal champion: `phineas2-champion-v9-deeperbook`** (tag; HEAD of the `phineas2` branch,
+commit `849dd6b` / engine at `bb4ad10`). Nothing on `main` has been touched; the protected champion
+is intact as the safe fallback. Nothing has been uploaded.
+
+Validation, all at the real 120s+0.5s clock, one core, alternating colours over preregistered openings,
+Phineas 2 in its own fresh process per game (mirrors the competition protocol):
+
+| opponent | games | score | 95% CI | failures |
+|---|---|---|---|---|
+| **current protected champion** | 16 | **0.969** (+15 =1 -0, all wins by checkmate) | [0.909, 1.000] | 0 |
+| Stockfish 18 @ UCI_Elo 1800 | 30 | 0.567 | [0.395, 0.738] | 0 |
+| Stockfish 18 @ UCI_Elo 2000 | 30 | 0.500 | [0.354, 0.646] | 0 |
+| Stockfish 18 @ UCI_Elo 2200 | 30 | 0.483 | [0.327, 0.640] | 0 |
+
+- **The mandate's core success criterion — statistically meaningful head-to-head superiority over the
+  protected champion — is met emphatically** (0.969, CI clear of 0.9).
+- Against the strength-limited Stockfish ladder, Phineas 2 sits around 2000-2100-equivalent: solidly
+  ahead of 1800, essentially dead-even across 2000-2200 (the ladder's ~200-Elo resolution is too coarse
+  to separate those cleanly). Roughly at, not clearly past, the ~2200 bar the user has since said is
+  needed for a London-final seat.
+- Reliability: 0 crashes / flags / illegal moves across ~400+ validation games; cold-start import
+  ~13-14s (budget 90s); submission zip 4.4 MB unzipped (cap 50 MB); shipped imports are numpy, numba
+  (guarded), python-chess + chess.syzygy, and stdlib only — no network, no subprocess, no third-party
+  engine; `ruff` + `mypy` clean repo-wide; `pytest tests/autoloop` 82/83 (the one failure is the
+  champion-specific offline-retraining splice test, which a from-scratch agent.py was never routed
+  through — not a regression, documented).
+
+**Open decision for the user:** submit v9 now, or continue to the one remaining Step 8 lever (a
+retrained compact evaluator — a larger, riskier, separate data-generation + training effort, the item
+most likely to lift the whole 2000-2200 band rather than patch one more failure mode). Everything
+below is the detailed trail.
+
 ## Repo reconciliation (2026-09-04 ~13:25)
 - Champion: exp-0089 `4a0c988009ecae163ac09368f92e4a792dac7568`. exp-0090..0099 all failed to displace it.
 - exp-0099 (Variant C material calib, commit `090f18c`, branch `autoloop/candidate-0099`): fast arena
