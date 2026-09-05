@@ -238,9 +238,22 @@ near-zero cross-depth reuse. `MAX_DEPTH=8` hard cap. Time budget fixed 2.0s rega
       Most 2200 losses are ordinary being-outplayed, not thrown-away wins. Accepted regardless: the
       ablation shows a genuine, safe improvement in general play even though it didn't move the 2200
       needle specifically -- these are different questions (does it help vs. does it close THIS gap).
-- [ ] NEXT: per step 7, do not spend further large batches confirming 2200 -- the gap there needs a
-      stronger core (evaluator and/or search), not another targeted patch. Building an opening book next
-      (cheapest remaining Step 8 lever, saves real clock time as a side benefit, no training pipeline
-      needed) followed by a retrained compact evaluator if time allows -- the higher-risk, higher-ceiling
-      item most likely to actually close a 200-Elo-class gap, now that the user has confirmed 2200+ is
-      the real qualification bar rather than a stretch goal.
+- [x] Step 8 candidate 2 (`074cf22`): 126-entry opening book, 8 plies deep, branch 2, generated offline
+      via scripts/p2_book_gen.py (local Stockfish as a development oracle only, ranking python-chess's
+      own legal moves -- nothing Stockfish-derived beyond the resulting position->move pairs ships).
+      Every shipped move independently re-verified legal from its keyed position. ACCEPTED as
+      **phineas2-champion-v8-book** after ablation vs v7-tablebase: **+20 =6 -4, score=0.767, 95% CI
+      [0.638, 0.895], 0 failures** -- the strongest single-candidate result of the entire P4/Step-8
+      sequence, CI comfortably clear of 0.5. (Ablation openings already run several plies deep before
+      either side moves, limiting the book's usable depth there -- the effect size suggests real value
+      beyond opening quality alone, plausibly including the clock time an instant ~0.1ms lookup banks
+      versus the multi-second search it replaces, compounding over a full game.)
+      Screened v8 at elo 2200 (16 games @ 120+0.5): **+5 =5 -6, score=0.469, 95% CI [0.266, 0.671].**
+      Meaningfully better than v6 (0.344) and v7 (0.312) at the same level -- the cumulative Step 8 work
+      is closing the 2200 gap, not just improving general play. Still technically <0.5 and n=16, but no
+      longer "clearly outmatched"; per step 7 this now justifies continued investment at 2200 rather
+      than writing it off.
+- [ ] NEXT: given the book's outsized effect and low cost/risk relative to the retrained-evaluator
+      option, deepen it (more plies, wider branch) before attempting the higher-effort, higher-risk
+      evaluator retrain -- proven, cheap lever first. Re-screen 2200 (larger sample) once the deeper
+      book lands to see whether the trend (0.344 -> 0.312 -> 0.469 across v6/v7/v8) continues.
